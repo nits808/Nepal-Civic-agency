@@ -1,8 +1,8 @@
-// ═══════════════════════════════════════════════════════════════
-// NCIG Frontend — useNews Hook v4.0
+// ---------------------------------------------------------------
+// NCIG Frontend � useNews Hook v4.0
 // Primary: Backend REST API + WebSocket real-time push
 // Fallback: Client-side RSS via CORS proxies (if backend offline)
-// ═══════════════════════════════════════════════════════════════
+// ---------------------------------------------------------------
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RSS_FEEDS, CORS_PROXIES, parseRSS } from './data.js';
 import { API_BASE_URL, WS_BASE_URL } from './config.js';
@@ -14,7 +14,7 @@ const CACHE_TTL    = 3 * 60_000;       // 3 min cache
 const REFRESH_MS   = 90_000;           // client-side fallback refresh
 const TIMEOUT_MS   = 5000;
 
-// ── LocalStorage Cache ───────────────────────────────────────
+// -- LocalStorage Cache ---------------------------------------
 function readCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -33,7 +33,7 @@ function writeCache(articles, feedStatus, source = 'backend') {
   } catch { /* quota */ }
 }
 
-// ── Check if backend is available ───────────────────────────
+// -- Check if backend is available ---------------------------
 async function checkBackend() {
   try {
     const ctrl = new AbortController();
@@ -43,7 +43,7 @@ async function checkBackend() {
   } catch { return false; }
 }
 
-// ── Fetch from backend ───────────────────────────────────────
+// -- Fetch from backend ---------------------------------------
 async function fetchFromBackend() {
   const r = await fetch(`${BACKEND_URL}/api/articles?limit=400`, {
     headers: { 'Accept': 'application/json' },
@@ -54,7 +54,7 @@ async function fetchFromBackend() {
   return { articles: Array.isArray(data.articles) ? data.articles : [], feedStatus };
 }
 
-// ── Fallback: client-side RSS fetch ─────────────────────────
+// -- Fallback: client-side RSS fetch -------------------------
 async function fetchOneFeed(feed) {
   for (const proxy of CORS_PROXIES) {
     try {
@@ -81,7 +81,7 @@ function dedup(articles) {
   });
 }
 
-// ── Main hook ────────────────────────────────────────────────
+// -- Main hook ------------------------------------------------
 export function useNews() {
   const [articles,       setArticles]       = useState([]);
   const [loading,        setLoading]        = useState(true);
@@ -98,7 +98,7 @@ export function useNews() {
   const mountedRef   = useRef(true);
   const wsTimerRef   = useRef(null); // tracks pending reconnect timer
 
-  // ── WebSocket connection ─────────────────────────────────
+  // -- WebSocket connection ---------------------------------
   const connectWS = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
@@ -141,7 +141,41 @@ export function useNews() {
     } catch { /* WS not available */ }
   }, []);
 
-  // ── Main fetch function ──────────────────────────────────
+  const fetchClientFallback = useCallback(async () => {
+    console.log('[useNews] Using client-side RSS fallback');
+    const localArticles = [];
+    const status = {};
+    let done = 0;
+    setProgress({ done: 0, total: RSS_FEEDS.length });
+
+    await Promise.race([
+      Promise.allSettled(
+        RSS_FEEDS.map(feed =>
+          fetchOneFeed(feed).then(result => {
+            if (!mountedRef.current) return;
+            done++;
+            status[feed.id] = { ok: result.ok, count: result.items.length, name: feed.name, type: feed.type };
+            if (result.ok) localArticles.push(...result.items);
+            setProgress(p => ({ ...p, done }));
+            if (done % 4 === 0) {
+              const snap = dedup([...localArticles].sort((a, b) => new Date(b.date) - new Date(a.date)));
+              setArticles(snap);
+              setFeedStatus({ ...status });
+            }
+          })
+        )
+      ),
+      new Promise(res => setTimeout(res, 18_000)),
+    ]);
+
+    if (!mountedRef.current) return;
+    const final = dedup(localArticles.sort((a, b) => new Date(b.date) - new Date(a.date)));
+    setArticles(final);
+    setFeedStatus({ ...status });
+    setLastUpdated(new Date());
+    writeCache(final, status, 'client');
+  }, []);
+  // -- Main fetch function ----------------------------------
   const fetch_ = useCallback(async (isRefresh = false) => {
     if (!mountedRef.current) return;
 
@@ -164,10 +198,13 @@ export function useNews() {
     setBackendOnline(backendUp);
 
     if (backendUp) {
-      // ── Backend path ────────────────────────────────────
+      // -- Backend path ------------------------------------
       try {
         const { articles, feedStatus } = await fetchFromBackend();
         if (!mountedRef.current) return;
+        if (!articles || articles.length === 0) {
+          throw new Error('Backend returned no articles');
+        }
         const unique = dedup(articles);
         setArticles(unique);
         setFeedStatus(feedStatus);
@@ -177,48 +214,17 @@ export function useNews() {
         connectWS();
       } catch (err) {
         console.warn('[Backend fetch failed]', err.message);
+        setBackendOnline(false);
+        await fetchClientFallback();
       }
     } else {
-      // ── Fallback: client-side RSS ────────────────────────
-      console.log('[useNews] Backend offline — using client-side RSS');
-      const localArticles = [];
-      const status = {};
-      let done = 0;
-      setProgress({ done: 0, total: RSS_FEEDS.length });
-
-      await Promise.race([
-        Promise.allSettled(
-          RSS_FEEDS.map(feed =>
-            fetchOneFeed(feed).then(result => {
-              if (!mountedRef.current) return;
-              done++;
-              status[feed.id] = { ok: result.ok, count: result.items.length, name: feed.name, type: feed.type };
-              if (result.ok) localArticles.push(...result.items);
-              setProgress(p => ({ ...p, done }));
-              if (done % 4 === 0) {
-                const snap = dedup([...localArticles].sort((a, b) => new Date(b.date) - new Date(a.date)));
-                setArticles(snap);
-                setFeedStatus({ ...status });
-              }
-            })
-          )
-        ),
-        new Promise(res => setTimeout(res, 18_000)),
-      ]);
-
-      if (!mountedRef.current) return;
-      const final = dedup(localArticles.sort((a, b) => new Date(b.date) - new Date(a.date)));
-      setArticles(final);
-      setFeedStatus({ ...status });
-      setLastUpdated(new Date());
-      writeCache(final, status, 'client');
+      await fetchClientFallback();
     }
-
     if (mountedRef.current) {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [connectWS]);
+  }, [connectWS, fetchClientFallback]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -245,3 +251,8 @@ export function useNews() {
     backendOnline, wsConnected, newArticleToast,
   };
 }
+
+
+
+
+
