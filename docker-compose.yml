@@ -1,0 +1,270 @@
+version: '3.9'
+
+services:
+  # ──────────── Infrastructure ────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: ncig-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+    networks:
+      - ncig-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: ncig-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 12
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - ncig-network
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: ncig-kafka-init
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      echo 'Waiting for Kafka to be ready...'
+      cub kafka-ready -b kafka:29092 1 60
+
+      echo 'Creating topics...'
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 12 --replication-factor 1 --topic raw.news
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 12 --replication-factor 1 --topic raw.policy
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 12 --replication-factor 1 --topic raw.disaster
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 12 --replication-factor 1 --topic raw.complaint
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 12 --replication-factor 1 --topic raw.social
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 12 --replication-factor 1 --topic raw.government
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 6 --replication-factor 1 --topic processed.classified
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 6 --replication-factor 1 --topic processed.summarized
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 6 --replication-factor 1 --topic processed.geotagged
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 6 --replication-factor 1 --topic processed.scored
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 6 --replication-factor 1 --topic enriched.events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic enriched.alerts
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic enriched.predictions
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic system.dead-letter
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic system.audit
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic system.metrics
+
+      echo 'Topics created successfully!'
+      kafka-topics --list --bootstrap-server kafka:29092
+      "
+    networks:
+      - ncig-network
+
+  neo4j:
+    image: neo4j:5.18-community
+    container_name: ncig-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/nepal_civic_2026
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1g
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    networks:
+      - ncig-network
+
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: ncig-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ncig
+      POSTGRES_USER: ncig_admin
+      POSTGRES_PASSWORD: nepal_civic_2026
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ncig-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: ncig-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass nepal_civic_2026 --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - ncig-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: ncig-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    networks:
+      - ncig-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: ncig-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ncig_minio
+      MINIO_ROOT_PASSWORD: nepal_civic_2026
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - ncig-network
+
+  # ──────────── Application Services ────────────
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: ncig-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_URL=redis://:nepal_civic_2026@redis:6379
+      - JWT_SECRET=ncig_jwt_secret_2026_production
+      - SCRAPER_HOST=ncig-scraper
+      - CLASSIFIER_HOST=ncig-classifier
+      - SUMMARIZER_HOST=ncig-summarizer
+      - GRAPH_HOST=ncig-graph
+      - ALERTS_HOST=ncig-alerts
+      - CORS_ORIGIN=http://localhost:5173
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - ncig-network
+
+  scraper-service:
+    build:
+      context: ./services/scraper-service
+      dockerfile: Dockerfile
+    container_name: ncig-scraper
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - KAFKA_BROKERS=kafka:29092
+      - REDIS_URL=redis://:nepal_civic_2026@redis:6379
+    depends_on:
+      - kafka
+      - redis
+    restart: unless-stopped
+    networks:
+      - ncig-network
+
+  knowledge-graph-service:
+    build:
+      context: ./services/knowledge-graph-service
+      dockerfile: Dockerfile
+    container_name: ncig-graph
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=nepal_civic_2026
+      - KAFKA_BROKERS=kafka:29092
+    depends_on:
+      - neo4j
+      - kafka
+    restart: unless-stopped
+    networks:
+      - ncig-network
+
+  alert-service:
+    build:
+      context: ./services/alert-service
+      dockerfile: Dockerfile
+    container_name: ncig-alerts
+    ports:
+      - "4003:4003"
+    environment:
+      - NODE_ENV=production
+      - PORT=4003
+      - KAFKA_BROKERS=kafka:29092
+      - REDIS_URL=redis://:nepal_civic_2026@redis:6379
+    depends_on:
+      - kafka
+      - redis
+    networks:
+      - ncig-network
+
+  classifier-service:
+    build:
+      context: ./services/classifier-service
+      dockerfile: Dockerfile
+    container_name: ncig-classifier
+    ports:
+      - "8001:8001"
+    environment:
+      - KAFKA_BROKERS=kafka:29092
+      - MODEL_PATH=/app/models
+    depends_on:
+      - kafka
+    networks:
+      - ncig-network
+
+  summarizer-service:
+    build:
+      context: ./services/summarizer-service
+      dockerfile: Dockerfile
+    container_name: ncig-summarizer
+    ports:
+      - "8002:8002"
+    environment:
+      - KAFKA_BROKERS=kafka:29092
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - kafka
+    networks:
+      - ncig-network
+
+volumes:
+  zookeeper-data:
+  kafka-data:
+  neo4j-data:
+  neo4j-logs:
+  postgres-data:
+  redis-data:
+  es-data:
+  minio-data:
+
+networks:
+  ncig-network:
+    driver: bridge

@@ -1,0 +1,19 @@
+{
+  "name": "ncig-backend",
+  "version": "1.0.0",
+  "description": "Nepal Civic Intelligence Graph — Lightweight Backend API",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3",
+    "ws": "^8.16.0"
+  }
+}

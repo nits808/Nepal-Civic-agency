@@ -1,0 +1,30 @@
+{
+  "name": "nepal-civic-intelligence-graph",
+  "version": "3.0.0",
+  "description": "National-level civic intelligence platform for Nepal",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "packages/*",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:scraper\" \"npm run dev:classifier\" \"npm run dev:summarizer\" \"npm run dev:graph\" \"npm run dev:query\" \"npm run dev:alert\" \"npm run dev:frontend\"",
+    "dev:gateway": "npm -w services/api-gateway run dev",
+    "dev:scraper": "npm -w services/scraper-service run dev",
+    "dev:classifier": "cd services/classifier-service && python -m uvicorn main:app --reload --port 8001",
+    "dev:summarizer": "cd services/summarizer-service && python -m uvicorn main:app --reload --port 8002",
+    "dev:graph": "npm -w services/knowledge-graph-service run dev",
+    "dev:query": "npm -w services/query-engine-service run dev",
+    "dev:alert": "npm -w services/alert-service run dev",
+    "dev:frontend": "npm -w frontend run dev",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker-compose build",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
