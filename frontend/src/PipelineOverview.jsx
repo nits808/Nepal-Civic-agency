@@ -5,8 +5,9 @@
 // ═══════════════════════════════════════════════════════════════
 import React, { useState, useEffect } from 'react';
 import { RSS_FEEDS, CAT_COLORS, FEED_TYPES } from './data.js';
+import { ANALYTICS_API_BASE_URL } from './config.js';
 
-const BACKEND = 'http://localhost:4000';
+const BACKEND = ANALYTICS_API_BASE_URL;
 
 export default function PipelineOverview({ feedStatus, progress, totalFeeds, loading, backendOnline, articles }) {
   const [feedDetails, setFeedDetails] = useState([]);

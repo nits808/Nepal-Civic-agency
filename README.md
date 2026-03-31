@@ -91,6 +91,22 @@ cd frontend && npm install && npm run dev
 
 Open **http://localhost:5173** to view the dashboard.
 
+## Netlify Deployment
+
+For Netlify, connect this GitHub repository and use these settings:
+
+- Base directory: `frontend`
+- Build command: `npm run build`
+- Publish directory: `dist`
+
+Optional environment variables for a hosted backend:
+
+- `VITE_API_BASE_URL` - public base URL for the API gateway, for example `https://api.example.com`
+- `VITE_WS_BASE_URL` - public WebSocket base URL, for example `wss://api.example.com`
+- `VITE_ANALYTICS_API_BASE_URL` - optional separate analytics/sentiment API base URL
+
+If those variables are not set, the frontend falls back to the Netlify site origin and then to its built-in client-side RSS/sentiment fallback logic when backend endpoints are unavailable.
+
 ## 📚 API Documentation
 
 API docs available at **http://localhost:3000/docs** (Swagger UI).

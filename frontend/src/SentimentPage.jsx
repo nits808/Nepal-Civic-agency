@@ -8,8 +8,9 @@ import {
   ResponsiveContainer, ReferenceLine, Cell, BarChart, Bar, RadialBarChart, RadialBar,
 } from 'recharts';
 import { CAT_ICONS, CAT_COLORS, resolveArticleImage } from './data.js';
+import { ANALYTICS_API_BASE_URL } from './config.js';
 
-const BACKEND = 'http://localhost:4000';
+const BACKEND = ANALYTICS_API_BASE_URL;
 
 // ── Gauge Component ─────────────────────────────────────────
 function MoodGauge({ score }) {

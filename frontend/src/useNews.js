@@ -5,9 +5,10 @@
 // ═══════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RSS_FEEDS, CORS_PROXIES, parseRSS } from './data.js';
+import { API_BASE_URL, WS_BASE_URL } from './config.js';
 
-const BACKEND_URL  = 'http://localhost:3000';
-const WS_URL       = 'ws://localhost:3000';
+const BACKEND_URL  = API_BASE_URL;
+const WS_URL       = WS_BASE_URL;
 const CACHE_KEY    = 'ncig_v4_cache';
 const CACHE_TTL    = 3 * 60_000;       // 3 min cache
 const REFRESH_MS   = 90_000;           // client-side fallback refresh
