@@ -28,6 +28,16 @@ const NAV = [
   { id: 'chat', icon: 'AI', label: 'Assistant' },
 ];
 
+const MOBILE_NAV = [
+  { id: 'front', icon: 'HOME', label: 'Home' },
+  { id: 'dashboard', icon: 'OPS', label: 'Ops' },
+  { id: 'sources', icon: 'SRC', label: 'Sources' },
+  { id: 'map', icon: 'MAP', label: 'Map' },
+  { id: 'analytics', icon: 'ANA', label: 'Analytics' },
+  { id: 'explorer', icon: 'GRAPH', label: 'Graph' },
+  { id: 'chat', icon: 'AI', label: 'AI' },
+];
+
 const PAGE_META = {
   front: {
     eyebrow: 'National signal desk',
@@ -477,6 +487,19 @@ export default function App() {
           <main className="main main-upgraded">
             <div className="page-transition">{renderPage()}</div>
           </main>
+
+          <nav className="mobile-shell-nav" aria-label="Mobile navigation">
+            {MOBILE_NAV.map((item) => (
+              <button
+                key={item.id}
+                className={`mobile-shell-nav-btn ${page === item.id ? 'active' : ''}`}
+                onClick={() => setPage(item.id)}
+              >
+                <span className="mobile-shell-nav-icon">{item.icon}</span>
+                <span className="mobile-shell-nav-label">{item.label}</span>
+              </button>
+            ))}
+          </nav>
         </div>
       )}
     </>

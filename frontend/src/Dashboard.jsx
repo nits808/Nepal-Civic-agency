@@ -298,7 +298,8 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
   const topProvince = useMemo(() => {
     const counts = {};
     categoryArticles.forEach((article) => {
-      counts[article.province] = (counts[article.province] || 0) + 1;
+      const province = article.province || 'National';
+      counts[province] = (counts[province] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   }, [categoryArticles]);
@@ -306,7 +307,8 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
   const topSource = useMemo(() => {
     const counts = {};
     categoryArticles.forEach((article) => {
-      counts[article.source] = (counts[article.source] || 0) + 1;
+      const source = article.source || 'Unknown source';
+      counts[source] = (counts[source] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   }, [categoryArticles]);
@@ -335,7 +337,7 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
             <div style={{ padding: '10px 14px', background: 'var(--bg-raised)', borderRadius: 8, borderLeft: `3px solid ${categoryColor}` }}>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-4)', fontWeight: 600, marginBottom: 4 }}>TOTAL ARTICLES</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 900, color: categoryColor }}>{categoryArticles.length}</div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>From {[...new Set(categoryArticles.map((article) => article.source))].length} sources</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>From {[...new Set(categoryArticles.map((article) => article.source || 'Unknown source'))].length} sources</div>
             </div>
 
             {topProvince && (
@@ -446,9 +448,13 @@ export function Dashboard({ articles, loading, lastUpdated, refetch }) {
     let latestArticle = null;
 
     articles.forEach((article) => {
-      byCat[article.category] = (byCat[article.category] || 0) + 1;
-      byProv[article.province] = (byProv[article.province] || 0) + 1;
-      bySrc[article.source] = (bySrc[article.source] || 0) + 1;
+      const category = article.category || 'uncategorized';
+      const province = article.province || 'National';
+      const source = article.source || 'Unknown source';
+
+      byCat[category] = (byCat[category] || 0) + 1;
+      byProv[province] = (byProv[province] || 0) + 1;
+      bySrc[source] = (bySrc[source] || 0) + 1;
 
       if (!latestArticle || new Date(article.date || 0).getTime() > new Date(latestArticle.date || 0).getTime()) {
         latestArticle = article;
