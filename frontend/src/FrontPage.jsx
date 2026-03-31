@@ -1,195 +1,343 @@
 import React from 'react';
 import { CAT_COLORS, CAT_ICONS, resolveArticleImage } from './data.js';
-import { FeedItem, articleLocation } from './Dashboard.jsx';
+import { articleLocation } from './Dashboard.jsx';
 import { useModal } from './ModalContext.jsx';
 import { SkeletonCard } from './UIComponents.jsx';
 
+function categoryLabel(value) {
+  if (!value) return 'General';
+  return value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function topEntry(map) {
+  return Object.entries(map).sort((a, b) => b[1] - a[1])[0] || null;
+}
+
 export function ImageCard({ article }) {
-  const clr = CAT_COLORS[article.category] || '#64748b';
+  const color = CAT_COLORS[article.category] || '#64748b';
   const { openModal } = useModal();
-  const img = resolveArticleImage(article);
+  const image = resolveArticleImage(article);
+
   return (
     <a
       className="img-card"
       href={article.link || '#'}
-      onClick={e => { e.preventDefault(); openModal({ ...article, imageUrl: img.url }); }}
+      onClick={(event) => {
+        event.preventDefault();
+        openModal({ ...article, imageUrl: image.url });
+      }}
       target="_blank"
       rel="noopener noreferrer"
     >
-      <div className="img-card-top" style={{ backgroundImage: `url(${img.url})` }}>
+      <div className="img-card-top" style={{ backgroundImage: `url(${image.url})` }}>
         <div className="img-card-overlay">
-          <span className="cat-pill" style={{ background: clr }}>
+          <span className="cat-pill" style={{ background: color }}>
             {CAT_ICONS[article.category] || ''} {article.category || 'News'}
           </span>
-          {img.type === 'rss' && <span className="real-img-badge" title="Real article photo">📸</span>}
+          {image.type === 'rss' && <span className="real-img-badge" title="Real article photo">Live</span>}
         </div>
       </div>
       <div className="img-card-body">
         <h3 className="ic-title">{article.title}</h3>
-        <p className="ic-desc">{(article.description || '').substring(0, 100)}…</p>
+        <p className="ic-desc">{(article.description || '').substring(0, 100)}...</p>
         <div className="ic-foot">
-          <span style={{ color: clr, fontWeight: 800 }}>{article.source || 'Unknown'}</span>
-          <span style={{ color: 'var(--text-4)' }}>&bull; {article.timeAgo || 'just now'}</span>
+          <span style={{ color, fontWeight: 800 }}>{article.source || 'Unknown'}</span>
+          <span style={{ color: 'var(--text-4)' }}>| {article.timeAgo || 'just now'}</span>
         </div>
       </div>
     </a>
   );
 }
 
-export function NewsCarousel({ articles }) {
-  const hot = [...articles].slice(0, 8);
-  if (!hot.length) return null;
+function HeroLeadStory({ article }) {
+  const { openModal } = useModal();
+  const image = resolveArticleImage(article);
+  const color = CAT_COLORS[article.category] || '#0f4c81';
+
   return (
-    <div className="news-carousel">
-      {hot.map((a, i) => (
-        <SlideWrapper key={i} a={a} clr={CAT_COLORS[a.category] || '#64748b'} />
-      ))}
+    <a
+      className="front-lead-story"
+      href={article.link || '#'}
+      onClick={(event) => {
+        event.preventDefault();
+        openModal({ ...article, imageUrl: image.url });
+      }}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ backgroundImage: `linear-gradient(180deg, rgba(8, 15, 30, 0.08), rgba(8, 15, 30, 0.78)), url(${image.url})` }}
+    >
+      <div className="front-lead-meta">
+        <span className="front-lead-kicker" style={{ borderColor: `${color}55`, color }}>
+          {categoryLabel(article.category)}
+        </span>
+        <span className="front-lead-time">{article.timeAgo || 'Just now'}</span>
+      </div>
+      <div className="front-lead-body">
+        <h2>{article.title}</h2>
+        <p>{(article.description || 'A high-priority update from the live civic intelligence stream.').slice(0, 180)}...</p>
+        <div className="front-lead-foot">
+          <span>{article.source || 'Unknown source'}</span>
+          <span>{articleLocation(article)}</span>
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function HeroMetric({ label, value, note, tone }) {
+  return (
+    <div className={`front-metric-card tone-${tone}`}>
+      <span className="front-metric-label">{label}</span>
+      <strong className="front-metric-value">{value}</strong>
+      <span className="front-metric-note">{note}</span>
     </div>
   );
 }
 
-function SlideWrapper({ a, clr }) {
-  const { openModal } = useModal();
-  const img = resolveArticleImage(a);
+function ActionCard({ title, description, buttonLabel, onClick, tone }) {
   return (
-    <a
-      className="carousel-slide hero-slide"
-      href={a.link || '#'}
-      onClick={e => { e.preventDefault(); openModal({ ...a, imageUrl: img.url }); }}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ backgroundImage: `url(${img.url})` }}
-    >
-      <div className="slide-gradient">
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-          <div className="slide-tag blur-pill" style={{ color: clr }}>
-            {(a.category || 'news').toUpperCase()} &bull; {a.source || 'RSS'}
-          </div>
-          <div className="hot-indicator">🔥 HOT</div>
-        </div>
-        <div className="slide-title mega-text">{a.title}</div>
-        <div className="slide-foot dim-foot" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div style={{ display:'flex', gap:'15px' }}>
-            <span>{articleLocation(a)}</span>
-            <span>{a.timeAgo}</span>
-          </div>
-          <button className="frosted-btn small">Read Brief &rarr;</button>
-        </div>
-      </div>
-    </a>
+    <div className={`front-action-card tone-${tone}`}>
+      <span className="front-action-kicker">{title}</span>
+      <p>{description}</p>
+      <button className="front-action-btn" onClick={onClick}>
+        {buttonLabel}
+      </button>
+    </div>
   );
 }
 
-// ── Skeleton carousel placeholders ──────────────────────────
-function SkeletonCarousel() {
+function SignalLane({ title, subtitle, articles, tone, emptyLabel }) {
   return (
-    <div className="news-carousel">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="carousel-slide skel-slide">
-          <div className="skel-slide-inner">
-            <div className="skel skel-pill" style={{ width: 120 }} />
-            <div className="skel skel-line long" style={{ height: 28, marginTop: 'auto' }} />
-            <div className="skel skel-line medium" style={{ height: 16 }} />
-          </div>
+    <div className={`front-lane-card tone-${tone}`}>
+      <div className="front-lane-head">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
         </div>
-      ))}
+      </div>
+      <div className="front-lane-list">
+        {articles.length === 0 ? (
+          <div className="front-lane-empty">{emptyLabel}</div>
+        ) : (
+          articles.map((article) => <SignalRow key={article.id} article={article} tone={tone} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SignalRow({ article, tone }) {
+  const { openModal } = useModal();
+  const color = CAT_COLORS[article.category] || '#64748b';
+
+  return (
+    <button
+      className={`front-lane-row tone-${tone}`}
+      onClick={() => openModal({ ...article, imageUrl: resolveArticleImage(article).url })}
+    >
+      <span className="front-lane-accent" style={{ background: color }} />
+      <span className="front-lane-body">
+        <strong>{article.title}</strong>
+        <span>{article.source || 'Unknown source'} | {article.timeAgo || 'Live'}</span>
+      </span>
+    </button>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <div className="front-lead-story skeleton-hero-card">
+      <div className="skel skel-pill" style={{ width: 120 }} />
+      <div className="skel skel-line long" style={{ marginTop: 'auto', height: 26 }} />
+      <div className="skel skel-line medium" style={{ height: 16 }} />
+      <div className="skel skel-line short" style={{ height: 16 }} />
     </div>
   );
 }
 
 export default function FrontPage({ articles, loading, setPage, backendOnline }) {
-  const disasterList = (articles || []).filter(a => a.category === 'disaster').slice(0, 4);
-  const techList     = (articles || []).filter(a => a.category === 'technology').slice(0, 4);
+  const featureList = articles.slice(1, 7);
+  const heroStory = articles[0];
+  const criticalStories = articles.filter((article) => ['disaster', 'law', 'health'].includes(article.category)).slice(0, 3);
+  const regionalStories = articles.filter((article) => article.province && !['National', 'International'].includes(article.province)).slice(0, 3);
+  const growthStories = articles.filter((article) => ['technology', 'economy', 'infrastructure'].includes(article.category)).slice(0, 3);
+
+  const categoryCounts = {};
+  const sourceCounts = {};
+  const provinceCounts = {};
+
+  for (const article of articles) {
+    categoryCounts[article.category || 'general'] = (categoryCounts[article.category || 'general'] || 0) + 1;
+    sourceCounts[article.source || 'Unknown source'] = (sourceCounts[article.source || 'Unknown source'] || 0) + 1;
+    provinceCounts[article.province || 'National'] = (provinceCounts[article.province || 'National'] || 0) + 1;
+  }
+
+  const leadCategory = topEntry(categoryCounts);
+  const leadSource = topEntry(sourceCounts);
+  const activeProvinceCount = Object.values(provinceCounts).filter(Boolean).length;
+
+  const heroMetrics = [
+    {
+      label: 'Live signals',
+      value: loading ? '...' : String(articles.length),
+      note: loading ? 'Building stream' : `${Object.keys(sourceCounts).length} active sources`,
+      tone: 'blue',
+    },
+    {
+      label: 'Regional spread',
+      value: loading ? '...' : `${activeProvinceCount}/7`,
+      note: 'provinces represented',
+      tone: 'gold',
+    },
+    {
+      label: 'Lead sector',
+      value: loading ? '...' : categoryLabel(leadCategory?.[0]),
+      note: loading ? 'Scanning sectors' : `${leadCategory?.[1] || 0} stories now`,
+      tone: 'red',
+    },
+    {
+      label: 'Lead source',
+      value: loading ? '...' : leadSource?.[0] || 'Warming up',
+      note: loading ? 'Scanning publishers' : `${leadSource?.[1] || 0} items surfaced`,
+      tone: 'green',
+    },
+  ];
+
+  const actionCards = [
+    {
+      title: 'Operations floor',
+      description: 'Jump into the high-density monitoring view with sector filters, watchlists, and story flow.',
+      buttonLabel: 'Open dashboards',
+      onClick: () => setPage('dashboard'),
+      tone: 'red',
+    },
+    {
+      title: 'Regional lens',
+      description: 'Move straight into the map to understand where signals are clustering and who is driving them.',
+      buttonLabel: 'Open map',
+      onClick: () => setPage('map'),
+      tone: 'blue',
+    },
+    {
+      title: 'Network explorer',
+      description: 'Trace relationships, test questions, and explore the knowledge graph behind the headlines.',
+      buttonLabel: 'Explore graph',
+      onClick: () => setPage('explorer'),
+      tone: 'gold',
+    },
+    {
+      title: 'Signal assistant',
+      description: 'Use the AI layer for rapid interpretation, synthesis, and follow-up investigation paths.',
+      buttonLabel: 'Ask assistant',
+      onClick: () => setPage('chat'),
+      tone: 'green',
+    },
+  ];
 
   return (
-    <div className="frontpage-wrapper">
-      <header className="front-header">
-        <div className="front-logo">
+    <div className="frontpage-wrapper frontpage-upgraded">
+      <header className="front-header front-header-refresh">
+        <button className="front-brand" onClick={() => setPage('front')}>
           <img className="logo-flag" src="https://giwmscdntwo.gov.np/static/grapejs/img/Nepal-flag.gif" alt="Nepal Flag" />
-          <div className="logo-title">
-            <span className="logo-main">Nepal Civic Intelligence</span>
-            <span className="logo-sub">Public Information Portal</span>
-          </div>
-        </div>
-        <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+          <span className="front-brand-copy">
+            <strong>Nepal Civic Intelligence</strong>
+            <span>Signal-first public information portal</span>
+          </span>
+        </button>
+
+        <div className="front-header-actions">
           {backendOnline !== undefined && (
             <div className={`backend-badge ${backendOnline ? 'backend-online' : 'backend-offline'}`}>
               <span className={`conn-dot ${backendOnline ? 'ok' : 'error'}`} />
-              {backendOnline ? 'Backend Online' : 'RSS Mode'}
+              {backendOnline ? 'Backend live' : 'Client intelligence mode'}
             </div>
           )}
+          <button className="ghost-action-btn" onClick={() => setPage('map')}>
+            Regional map
+          </button>
           <button className="enter-btn" onClick={() => setPage('dashboard')}>
-            Enter Dashboards &rarr;
+            Open operations
           </button>
         </div>
       </header>
 
-      <main className="front-main">
-        <div className="front-section-title">
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:'10px' }}>
+      <main className="front-main front-main-refresh">
+        <section className="front-hero-grid">
+          <div className="front-hero-copy">
+            <div className="section-eyebrow">National signal desk</div>
+            <h1 className="front-hero-title">
+              Turn a fast-moving civic news stream into a readable national picture.
+            </h1>
+            <p className="front-hero-lead">
+              This experience now foregrounds what matters most: where pressure is building, which sectors are moving,
+              and where to go next when the national mood shifts.
+            </p>
+
+            <div className="front-hero-actions">
+              <button className="enter-btn" onClick={() => setPage('dashboard')}>
+                Launch command floor
+              </button>
+              <button className="ghost-action-btn" onClick={() => setPage('sources')}>
+                Inspect source network
+              </button>
+            </div>
+
+            <div className="front-hero-strip">
+              {heroMetrics.map((metric) => (
+                <HeroMetric key={metric.label} {...metric} />
+              ))}
+            </div>
+          </div>
+
+          {loading ? <HeroSkeleton /> : heroStory ? <HeroLeadStory article={heroStory} /> : <HeroSkeleton />}
+        </section>
+
+        <section className="front-action-grid">
+          {actionCards.map((card) => (
+            <ActionCard key={card.title} {...card} />
+          ))}
+        </section>
+
+        <section className="front-priority-grid">
+          <SignalLane
+            title="Critical watch"
+            subtitle="High-risk developments and immediate response signals."
+            articles={criticalStories}
+            tone="red"
+            emptyLabel="No critical items are leading the stream right now."
+          />
+          <SignalLane
+            title="Provincial pulse"
+            subtitle="Regional movement outside the national center."
+            articles={regionalStories}
+            tone="blue"
+            emptyLabel="Regional reporting is still warming up."
+          />
+          <SignalLane
+            title="Growth and innovation"
+            subtitle="Signals tied to opportunity, investment, and infrastructure."
+            articles={growthStories}
+            tone="gold"
+            emptyLabel="Growth-related stories will surface here as the stream expands."
+          />
+        </section>
+
+        <section className="card front-featured-card">
+          <div className="card-head front-featured-head">
             <div>
-              <h2>🔥 The Hottest Briefs</h2>
-              <p>Real-time breaking intelligence across all sectors</p>
+              <span className="card-title">Featured signal stream</span>
+              <span className="card-sub">Curated quick-read cards from the live feed</span>
             </div>
-            <div className="live-intel-counter">
-              <span className="heartbeat" />
-              <strong>{loading ? '—' : articles.length}</strong> Intelligence Nodes Monitored
-            </div>
+            {!loading && <span className="front-featured-count">{articles.length} live articles</span>}
           </div>
-        </div>
-
-        {/* Hero Carousel — skeleton while loading */}
-        {loading ? <SkeletonCarousel /> : <NewsCarousel articles={articles} />}
-
-        <div className="front-grid">
-          {/* Latest News grid */}
-          <div className="card">
-            <div className="card-head">
-              <span className="card-title">⚡ Latest Top Stories</span>
-              {!loading && <span className="card-sub">{articles.length} live articles</span>}
-            </div>
-            <div className="img-card-grid">
-              {loading
-                ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-                : articles.length === 0
-                  ? <div className="empty-state">No intelligence collected yet.</div>
-                  : articles.slice(0, 6).map(a => <ImageCard key={a.id} article={a} />)
-              }
-            </div>
+          <div className="img-card-grid">
+            {loading
+              ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />)
+              : featureList.length === 0
+                ? <div className="empty-state">No intelligence collected yet.</div>
+                : featureList.map((article) => <ImageCard key={article.id} article={article} />)}
           </div>
-
-          <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
-            {/* Disaster Alerts */}
-            {(loading || disasterList.length > 0) && (
-              <div className="card" style={{ borderTop:'4px solid #ef4444' }}>
-                <div className="card-head">
-                  <span className="card-title" style={{ color:'#ef4444' }}>🚨 Active Disaster Alerts</span>
-                </div>
-                <div className="img-card-grid-small">
-                  {loading
-                    ? Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)
-                    : disasterList.map(a => <ImageCard key={a.id} article={a} />)
-                  }
-                </div>
-              </div>
-            )}
-
-            {/* Tech */}
-            {(loading || techList.length > 0) && (
-              <div className="card" style={{ background:'linear-gradient(135deg,rgba(99,102,241,0.02),rgba(37,99,235,0.02))', borderTop:'4px solid #6366f1' }}>
-                <div className="card-head">
-                  <span className="card-title" style={{ color:'#6366f1' }}>💻 Technology & Innovation</span>
-                </div>
-                <div className="img-card-grid-small">
-                  {loading
-                    ? Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)
-                    : techList.map(a => <ImageCard key={a.id} article={a} />)
-                  }
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        </section>
       </main>
     </div>
   );
