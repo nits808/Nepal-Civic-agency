@@ -167,6 +167,35 @@ export const RSS_FEEDS = [
     fb:'https://www.facebook.com/kalikatv',
     website:'https://kalikatv.com', province:'Gandaki' },
 
+  // Province-level coverage (Google News queries to ensure all provinces)
+  { id:'gnews_koshi',   name:'Koshi Province News',    tier:3, type:'regional', verified: true,
+    url:'https://news.google.com/rss/search?q=Koshi+Province+Nepal&hl=en-NP&gl=NP&ceid=NP:en',
+    province:'Province No. 1', forceProvince:'Province No. 1', forceDistrict:'Biratnagar' },
+
+  { id:'gnews_madhesh', name:'Madhesh Province News',  tier:3, type:'regional', verified: true,
+    url:'https://news.google.com/rss/search?q=Madhesh+Province+Nepal&hl=en-NP&gl=NP&ceid=NP:en',
+    province:'Madhesh', forceProvince:'Madhesh', forceDistrict:'Janakpur' },
+
+  { id:'gnews_bagmati', name:'Bagmati Province News',  tier:3, type:'regional', verified: true,
+    url:'https://news.google.com/rss/search?q=Bagmati+Province+Nepal&hl=en-NP&gl=NP&ceid=NP:en',
+    province:'Bagmati', forceProvince:'Bagmati', forceDistrict:'Hetauda' },
+
+  { id:'gnews_gandaki', name:'Gandaki Province News',  tier:3, type:'regional', verified: true,
+    url:'https://news.google.com/rss/search?q=Gandaki+Province+Nepal&hl=en-NP&gl=NP&ceid=NP:en',
+    province:'Gandaki', forceProvince:'Gandaki', forceDistrict:'Pokhara' },
+
+  { id:'gnews_lumbini', name:'Lumbini Province News',  tier:3, type:'regional', verified: true,
+    url:'https://news.google.com/rss/search?q=Lumbini+Province+Nepal&hl=en-NP&gl=NP&ceid=NP:en',
+    province:'Lumbini', forceProvince:'Lumbini', forceDistrict:'Deukhuri' },
+
+  { id:'gnews_karnali', name:'Karnali Province News',  tier:3, type:'regional', verified: true,
+    url:'https://news.google.com/rss/search?q=Karnali+Province+Nepal&hl=en-NP&gl=NP&ceid=NP:en',
+    province:'Karnali', forceProvince:'Karnali', forceDistrict:'Birendranagar' },
+
+  { id:'gnews_sudur',   name:'Sudurpashchim News',     tier:3, type:'regional', verified: true,
+    url:'https://news.google.com/rss/search?q=Sudurpashchim+Province+Nepal&hl=en-NP&gl=NP&ceid=NP:en',
+    province:'Sudurpashchim', forceProvince:'Sudurpashchim', forceDistrict:'Godawari' },
+
   // ══════════════════════════════════════════════════
   // TIER 4 — GOVERNMENT & INTERNATIONAL
   // ══════════════════════════════════════════════════
@@ -258,7 +287,7 @@ export function isSourceVerified(sourceName) {
 // ── Feed type display info ────────────────────────────────────
 export const FEED_TYPES = {
   tv:       { label:'National TV',  color:'#dc2626', icon:'📺' },
-  regional: { label:'Regional TV',  color:'#d97706', icon:'📡' },
+  regional: { label:'Regional',     color:'#d97706', icon:'📡' },
   media:    { label:'Digital Media', color:'#1a6aff', icon:'📰' },
   govt:     { label:'Government',   color:'#059669', icon:'🏛️' },
   intl:     { label:'International', color:'#7c3aed', icon:'🌐' },
@@ -728,6 +757,8 @@ export function parseRSS(xml, feed) {
       const combined = title + ' ' + desc;
       const cat = classify(combined);
       const geo = geoTag(combined);
+      const forcedProvince = feed?.forceProvince;
+      const forcedDistrict = feed?.forceDistrict;
 
       let date = '';
       try {
@@ -747,8 +778,8 @@ export function parseRSS(xml, feed) {
         link,
         description: desc,
         category: cat,
-        district: geo.district,
-        province: geo.province,
+        district: forcedDistrict || geo.district,
+        province: forcedProvince || geo.province,
         date,
         timeAgo: timeAgo(date),
         source: feed.name,

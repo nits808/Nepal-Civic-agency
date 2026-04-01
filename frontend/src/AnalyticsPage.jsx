@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell } from 'recharts';
-import { CAT_COLORS, CAT_ICONS, RSS_FEEDS, FEED_TYPES } from './data.js';
+import { CAT_COLORS, CAT_ICONS, RSS_FEEDS, FEED_TYPES, PROVINCES } from './data.js';
 
 const POLICIES = [
   { title:'Digital Nepal Framework 2026-2030', ministry:'MoICT', status:'implementing', progress:35 },
@@ -47,6 +47,37 @@ export function AnalyticsPage({ articles, feedStatus = {} }) {
     articles.forEach(a => { m[a.source]=(m[a.source]||0)+1; });
     return Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
   }, [articles]);
+
+  const sourceMetrics = useMemo(() => {
+    const total = RSS_FEEDS.length;
+    const verified = RSS_FEEDS.filter(f => f.verified).length;
+    const facebookLinked = RSS_FEEDS.filter(f => f.fb).length;
+    const youtubeFeeds = RSS_FEEDS.filter(f => String(f.url || '').includes('youtube.com/feeds/videos.xml')).length;
+    const live = Object.values(feedStatus).filter(s => s?.ok).length;
+    const failed = Object.values(feedStatus).filter(s => s && s.ok === false).length;
+    const pending = Math.max(total - live - failed, 0);
+
+    const byType = RSS_FEEDS.reduce((acc, f) => {
+      acc[f.type] = (acc[f.type] || 0) + 1;
+      return acc;
+    }, {});
+
+    const byProvince = RSS_FEEDS.reduce((acc, f) => {
+      const key = f.province || 'National';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const provinceRows = PROVINCES.map(p => ({
+      name: p.name,
+      count: byProvince[p.name] || 0,
+      color: p.color,
+    })).filter(p => p.count > 0);
+
+    return {
+      total, verified, facebookLinked, youtubeFeeds, live, failed, pending, byType, provinceRows,
+    };
+  }, [feedStatus]);
 
   return (
     <div className="page">
@@ -100,6 +131,65 @@ export function AnalyticsPage({ articles, feedStatus = {} }) {
                     <div style={{fontSize:'0.72rem',color:'#f1f5f9',fontWeight:700,width:28,textAlign:'right'}}>
                       {s.value}
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid-2">
+            <div className="card">
+              <div className="card-head"><span className="card-title">📶 Source Dashboard</span></div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:10 }}>
+                <div className="stat-card" style={{ borderTopColor:'#1a6aff' }}>
+                  <div className="stat-icon">🧭</div>
+                  <div className="stat-val">{sourceMetrics.total}</div>
+                  <div className="stat-lbl">Total Sources</div>
+                </div>
+                <div className="stat-card" style={{ borderTopColor:'#059669' }}>
+                  <div className="stat-icon">✅</div>
+                  <div className="stat-val">{sourceMetrics.verified}</div>
+                  <div className="stat-lbl">Verified</div>
+                </div>
+                <div className="stat-card" style={{ borderTopColor:'#10b981' }}>
+                  <div className="stat-icon">🟢</div>
+                  <div className="stat-val">{sourceMetrics.live}</div>
+                  <div className="stat-lbl">Live</div>
+                </div>
+                <div className="stat-card" style={{ borderTopColor:'#ef4444' }}>
+                  <div className="stat-icon">🔴</div>
+                  <div className="stat-val">{sourceMetrics.failed}</div>
+                  <div className="stat-lbl">Failed</div>
+                </div>
+                <div className="stat-card" style={{ borderTopColor:'#f59e0b' }}>
+                  <div className="stat-icon">⏳</div>
+                  <div className="stat-val">{sourceMetrics.pending}</div>
+                  <div className="stat-lbl">Pending</div>
+                </div>
+                <div className="stat-card" style={{ borderTopColor:'#0ea5e9' }}>
+                  <div className="stat-icon">📘</div>
+                  <div className="stat-val">{sourceMetrics.facebookLinked}</div>
+                  <div className="stat-lbl">Facebook-Linked</div>
+                </div>
+                <div className="stat-card" style={{ borderTopColor:'#7c3aed' }}>
+                  <div className="stat-icon">▶️</div>
+                  <div className="stat-val">{sourceMetrics.youtubeFeeds}</div>
+                  <div className="stat-lbl">YouTube Feeds</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-head"><span className="card-title">🧩 Province Source Coverage</span></div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                {sourceMetrics.provinceRows.map((p) => (
+                  <div key={p.name} style={{
+                    display:'flex', alignItems:'center', gap:8, padding:'6px 8px',
+                    background:'var(--bg-raised)', borderRadius:8, border:'1px solid var(--border)',
+                  }}>
+                    <div style={{ width:10, height:10, borderRadius:3, background:p.color }} />
+                    <div style={{ fontSize:'0.72rem', color:'var(--text-2)', fontWeight:600 }}>{p.name}</div>
+                    <div style={{ marginLeft:'auto', fontWeight:800, color:'var(--text-3)' }}>{p.count}</div>
                   </div>
                 ))}
               </div>
@@ -216,17 +306,32 @@ export function AnalyticsPage({ articles, feedStatus = {} }) {
               ))}
             </div>
           </div>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:12 }}>
+            {Object.entries(sourceMetrics.byType).map(([type, count]) => (
+              <div key={type} style={{
+                padding:'6px 10px', borderRadius:10,
+                background:`${(FEED_TYPES[type]?.color || '#64748b')}15`,
+                border:`1px solid ${(FEED_TYPES[type]?.color || '#64748b')}30`,
+                fontSize:'0.68rem', fontWeight:700, color:(FEED_TYPES[type]?.color || '#64748b'),
+              }}>
+                {FEED_TYPES[type]?.icon || '📰'} {FEED_TYPES[type]?.label || type}: {count}
+              </div>
+            ))}
+            <div style={{ marginLeft:'auto', fontSize:'0.7rem', color:'var(--text-4)' }}>
+              Facebook-linked: {sourceMetrics.facebookLinked}
+            </div>
+          </div>
           <div style={{overflowX:'auto'}}>
             <table className="tbl">
               <thead><tr>
-                <th>#</th><th>Source</th><th>Type</th><th>Status</th><th>Articles</th>
+                <th>#</th><th>Source</th><th>Type</th><th>Status</th><th>Articles</th><th>Social</th><th>Province</th>
               </tr></thead>
               <tbody>
                 {RSS_FEEDS.map((f,i) => {
                   const s     = feedStatus[f.id];
                   const count = articles.filter(a => a.source === f.name).length;
-                  const typeColors = {media:'#1a6aff',govt:'#DC143C',intl:'#7c3aed',dev:'#059669'};
-                  const typeIcons  = {media:'📰',govt:'🏛️',intl:'🌐',dev:'🌱'};
+                  const typeColors = {media:'#1a6aff',govt:'#DC143C',intl:'#7c3aed',dev:'#059669',regional:'#d97706',tv:'#ef4444'};
+                  const typeIcons  = {media:'📰',govt:'🏛️',intl:'🌐',dev:'🌱',regional:'📍',tv:'📺'};
                   return (
                     <tr key={i}>
                       <td className="muted smaller mono">{i+1}</td>
@@ -237,7 +342,7 @@ export function AnalyticsPage({ articles, feedStatus = {} }) {
                           background:`${typeColors[f.type]||'#666'}15`,
                           color:typeColors[f.type]||'#666',
                           border:`1px solid ${typeColors[f.type]||'#666'}30`,
-                        }}>{typeIcons[f.type]||'📄'} {f.type}</span>
+                        }}>{typeIcons[f.type]||'📰'} {f.type}</span>
                       </td>
                       <td>
                         {s ? (
@@ -251,6 +356,8 @@ export function AnalyticsPage({ articles, feedStatus = {} }) {
                       <td>
                         <span style={{fontWeight:700,color:count>0?'#059669':'#9ca3af'}}>{count}</span>
                       </td>
+                      <td className="muted small">{f.fb ? 'Facebook' : '—'}</td>
+                      <td className="muted small">{f.province || 'National'}</td>
                     </tr>
                   );
                 })}

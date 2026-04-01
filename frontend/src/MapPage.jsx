@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { PROVINCES, CAT_COLORS, CAT_ICONS } from './data.js';
 import {
   NEPAL_MAP_VIEWBOX,
@@ -10,14 +10,32 @@ export function MapPage({ articles }) {
   const [selected, setSelected]   = useState(null);
   const [catFilter, setCatFilter] = useState('all');
   const [hovering, setHovering]   = useState(null);
+  const [viewMode, setViewMode]   = useState('volume');
+  const [hoverInfo, setHoverInfo] = useState(null);
+  const mapRef = useRef(null);
 
-  const provCounts = useMemo(() => {
-    const m = {};
-    articles.forEach(a => { m[a.province] = (m[a.province]||0)+1; });
-    return m;
+  const provStats = useMemo(() => {
+    const stats = {};
+    PROVINCES.forEach(p => {
+      stats[p.name] = { total: 0, byCategory: {}, topCategory: null, latest: null };
+    });
+    articles.forEach(a => {
+      const prov = a.province || 'Unknown';
+      if (!stats[prov]) stats[prov] = { total: 0, byCategory: {}, topCategory: null, latest: null };
+      stats[prov].total += 1;
+      const cat = a.category || 'other';
+      stats[prov].byCategory[cat] = (stats[prov].byCategory[cat] || 0) + 1;
+      const date = a.date ? new Date(a.date) : null;
+      if (date && (!stats[prov].latest || date > stats[prov].latest)) stats[prov].latest = date;
+    });
+    Object.values(stats).forEach((s) => {
+      const top = Object.entries(s.byCategory).sort((a, b) => b[1] - a[1])[0];
+      s.topCategory = top ? top[0] : null;
+    });
+    return stats;
   }, [articles]);
 
-  const maxCount = Math.max(...Object.values(provCounts), 1);
+  const maxCount = Math.max(...Object.values(provStats).map(s => s.total), 1);
 
   const selectedArticles = useMemo(() => {
     if (!selected) return [];
@@ -26,7 +44,27 @@ export function MapPage({ articles }) {
       .slice(0, 20);
   }, [articles, selected, catFilter]);
 
-  const cats = ['all','disaster','politics','economy','health','infrastructure','education','sports'];
+  const cats = ['all', ...Object.keys(CAT_ICONS).filter(c => c !== 'all')];
+
+  const withAlpha = (hex, alpha) => {
+    if (!hex || !hex.startsWith('#')) return hex;
+    const a = Math.round(Math.max(0, Math.min(1, alpha)) * 255).toString(16).padStart(2,'0');
+    return `${hex}${a}`;
+  };
+
+  const updateHover = (evt, prov) => {
+    if (!mapRef.current) return;
+    const rect = mapRef.current.getBoundingClientRect();
+    const stats = provStats[prov.name] || { total: 0, byCategory: {}, topCategory: null };
+    setHoverInfo({
+      name: prov.name,
+      count: stats.total,
+      topCategory: stats.topCategory,
+      x: evt.clientX - rect.left,
+      y: evt.clientY - rect.top,
+      latest: stats.latest,
+    });
+  };
 
   return (
     <div className="page">
@@ -34,7 +72,7 @@ export function MapPage({ articles }) {
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:16, height:'calc(100vh - 160px)' }}>
 
-        {/* ── SVG Map panel ──────────────────────────────── */}
+        {/* ── SVG Map panel ───────────────────────────────────────── */}
         <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14,
           overflow:'hidden', position:'relative', boxShadow:'var(--shadow-md)', display:'flex', flexDirection:'column' }}>
 
@@ -48,10 +86,19 @@ export function MapPage({ articles }) {
                 {c === 'all' ? 'All Categories' : `${CAT_ICONS[c]||''} ${c}`}
               </button>
             ))}
+            <div style={{ marginLeft:'auto', display:'flex', gap:6 }}>
+              {['volume','dominant'].map(m => (
+                <button key={m} className={`chip ${viewMode===m?'on':''}`}
+                  onClick={() => setViewMode(m)}
+                  style={{ fontSize:'0.65rem', padding:'3px 9px' }}>
+                  {m === 'volume' ? 'Heatmap' : 'Dominant Category'}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* SVG fills remaining space */}
-          <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
+          <div ref={mapRef} style={{ flex:1, position:'relative', overflow:'hidden' }}>
             <svg width="100%" height="100%" viewBox={NEPAL_MAP_VIEWBOX} preserveAspectRatio="xMidYMid meet"
               style={{ background:'linear-gradient(160deg,#eef3ff 0%,#f5f8ff 100%)', display:'block' }}>
               <defs>
@@ -87,19 +134,26 @@ export function MapPage({ articles }) {
 
               {/* Province shapes */}
               {PROVINCES.map(prov => {
-                const count      = provCounts[prov.name] || 0;
+                const stats      = provStats[prov.name] || { total: 0, topCategory: null };
+                const count      = stats.total || 0;
                 const intensity  = count / maxCount;
                 const isSelected = selected?.name === prov.name;
                 const isHover    = hovering === prov.name;
                 const c          = NEPAL_PROVINCE_CENTROIDS[prov.name];
                 const lp         = c ? { x: c.x, y: c.y, nx: c.x, ny: c.y } : { x: 410, y: 160, nx: 410, ny: 160 };
                 const pathD      = NEPAL_PROVINCE_PATHS[prov.name];
+                const dominant   = stats.topCategory;
+                const dominantColor = CAT_COLORS[dominant] || prov.color;
+                const baseFill   = viewMode === 'dominant'
+                  ? withAlpha(dominantColor, 0.18 + intensity * 0.65)
+                  : withAlpha(prov.fill, 0.4 + intensity * 0.5);
 
                 return (
                   <g key={prov.code} style={{ cursor:'pointer' }}
                     onClick={() => setSelected(isSelected ? null : prov)}
-                    onMouseEnter={() => setHovering(prov.name)}
-                    onMouseLeave={() => setHovering(null)}>
+                    onMouseEnter={(e) => { setHovering(prov.name); updateHover(e, prov); }}
+                    onMouseMove={(e) => updateHover(e, prov)}
+                    onMouseLeave={() => { setHovering(null); setHoverInfo(null); }}>
 
                     {/* Province fill */}
                     <path
@@ -108,8 +162,8 @@ export function MapPage({ articles }) {
                         ? prov.color + 'cc'
                         : isHover
                           ? prov.color + '88'
-                          : prov.fill + (Math.round(0x80 + intensity*0x60).toString(16).padStart(2,'0'))}
-                      stroke={isSelected || isHover ? prov.color : prov.color + '66'}
+                          : baseFill}
+                      stroke={isSelected || isHover ? prov.color : withAlpha(prov.color, 0.5)}
                       strokeWidth={isSelected ? 2 : isHover ? 1.5 : 0.8}
                       filter={isSelected ? 'url(#glow)' : undefined}
                       style={{ transition:'all 0.2s' }}
@@ -151,6 +205,15 @@ export function MapPage({ articles }) {
                       style={{ pointerEvents:'none' }}>
                       {prov.capital} · {count} articles
                     </text>
+                    {viewMode === 'dominant' && dominant && (
+                      <text x={lp.nx} y={lp.ny + 16}
+                        textAnchor="middle"
+                        fill={CAT_COLORS[dominant] || '#475569'} fontSize="6"
+                        fontFamily="Inter,sans-serif" fontWeight="700"
+                        style={{ pointerEvents:'none' }}>
+                        {dominant}
+                      </text>
+                    )}
                   </g>
                 );
               })}
@@ -162,6 +225,34 @@ export function MapPage({ articles }) {
                 NEPAL
               </text>
             </svg>
+
+            {/* Hover tooltip */}
+            {hoverInfo && (
+              <div style={{
+                position:'absolute',
+                left: Math.min(hoverInfo.x + 12, 620),
+                top: Math.max(hoverInfo.y - 8, 8),
+                background:'rgba(255,255,255,0.95)',
+                border:'1px solid rgba(15,23,42,0.08)',
+                borderRadius:10,
+                padding:'8px 10px',
+                boxShadow:'0 8px 18px rgba(15,23,42,0.12)',
+                pointerEvents:'none',
+                minWidth:160,
+              }}>
+                <div style={{ fontWeight:700, fontSize:'0.78rem', color:'var(--text-1)', marginBottom:2 }}>
+                  {hoverInfo.name}
+                </div>
+                <div style={{ fontSize:'0.68rem', color:'var(--text-4)' }}>
+                  {hoverInfo.count} articles
+                </div>
+                {hoverInfo.topCategory && (
+                  <div style={{ fontSize:'0.68rem', marginTop:4, color:CAT_COLORS[hoverInfo.topCategory] }}>
+                    Dominant: {CAT_ICONS[hoverInfo.topCategory]} {hoverInfo.topCategory}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Bottom legend */}
@@ -174,14 +265,20 @@ export function MapPage({ articles }) {
                 onClick={() => setSelected(selected?.name===p.name ? null : p)}>
                 <div style={{ width:10, height:10, borderRadius:2, background:p.color, flexShrink:0 }}/>
                 <span style={{ fontSize:'0.68rem', color:'var(--text-2)', fontWeight:600 }}>
-                  {p.name.replace('Province No. ','P')} ({provCounts[p.name]||0})
+                  {p.name.replace('Province No. ','P')} ({provStats[p.name]?.total||0})
                 </span>
               </div>
             ))}
+            <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, fontSize:'0.65rem', color:'var(--text-4)' }}>
+              <span>Low</span>
+              <div style={{ width:60, height:6, borderRadius:6,
+                background:'linear-gradient(90deg, rgba(0,56,147,0.15), rgba(0,56,147,0.6))' }} />
+              <span>High</span>
+            </div>
           </div>
         </div>
 
-        {/* ── Side panel ──────────────────────────────────── */}
+        {/* ── Side panel ───────────────────────────────────────── */}
         <div style={{ display:'flex', flexDirection:'column', gap:12, overflowY:'auto' }}>
           {selected ? (
             <>
@@ -194,6 +291,9 @@ export function MapPage({ articles }) {
                   </div>
                   <button onClick={() => setSelected(null)}
                     style={{ background:'none', border:'none', fontSize:'1.1rem', color:'var(--text-4)', cursor:'pointer' }}>✕</button>
+                </div>
+                <div style={{ fontSize:'0.7rem', color:'var(--text-4)', marginBottom:8 }}>
+                  Dominant category: {provStats[selected.name]?.topCategory ? `${CAT_ICONS[provStats[selected.name].topCategory]} ${provStats[selected.name].topCategory}` : 'N/A'}
                 </div>
 
                 {/* Category breakdown for province */}
@@ -252,7 +352,7 @@ export function MapPage({ articles }) {
                 </div>
               </div>
               {PROVINCES.map(p => {
-                const count = provCounts[p.name]||0;
+                const count = provStats[p.name]?.total || 0;
                 const pct   = maxCount ? Math.round(count/maxCount*100) : 0;
                 return (
                   <div key={p.code} className="card" style={{ padding:'12px 14px', cursor:'pointer', borderTop:`2px solid ${p.color}` }}
@@ -277,3 +377,4 @@ export function MapPage({ articles }) {
     </div>
   );
 }
+
