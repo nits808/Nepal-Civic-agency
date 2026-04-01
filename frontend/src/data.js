@@ -63,33 +63,33 @@ export const RSS_FEEDS = [
     fb:'https://www.facebook.com/kathmandupost',
     website:'https://kathmandupost.com', province:'Bagmati' },
 
-  { id:'htimes',       name:'The Himalayan Times',     tier:2, type:'media',
+  { id:'htimes',       name:'The Himalayan Times',     tier:2, type:'media', verified: true,
     url:'https://thehimalayantimes.com/feed',
     fb:'https://www.facebook.com/thehimalayantimes',
     website:'https://thehimalayantimes.com', province:'Bagmati' },
 
-  { id:'republica',    name:'My Republica',            tier:2, type:'media',
+  { id:'republica',    name:'My Republica',            tier:2, type:'media', verified: true,
     url:'https://myrepublica.nagariknetwork.com/rss',
     fb:'https://www.facebook.com/myrepublica',
     website:'https://myrepublica.nagariknetwork.com', province:'Bagmati' },
 
-  { id:'ntimes',       name:'Nepali Times',            tier:2, type:'media',
+  { id:'ntimes',       name:'Nepali Times',            tier:2, type:'media', verified: true,
     url:'https://www.nepalitimes.com/feed/',
     website:'https://www.nepalitimes.com', province:'Bagmati' },
 
-  { id:'record',       name:'The Record Nepal',        tier:2, type:'media',
+  { id:'record',       name:'The Record Nepal',        tier:2, type:'media', verified: true,
     url:'https://www.recordnepal.com/feed',
     website:'https://www.recordnepal.com', province:'Bagmati' },
 
-  { id:'annapurna',    name:'The Annapurna Express',   tier:2, type:'media',
+  { id:'annapurna',    name:'The Annapurna Express',   tier:2, type:'media', verified: true,
     url:'https://theannapurnaexpress.com/feed',
     website:'https://theannapurnaexpress.com', province:'Bagmati' },
 
-  { id:'khabarhub',    name:'Khabarhub English',       tier:2, type:'media',
+  { id:'khabarhub',    name:'Khabarhub English',       tier:2, type:'media', verified: true,
     url:'https://english.khabarhub.com/feed',
     website:'https://english.khabarhub.com', province:'Bagmati' },
 
-  { id:'nepallive',    name:'Nepal Live Today',        tier:2, type:'media',
+  { id:'nepallive',    name:'Nepal Live Today',        tier:2, type:'media', verified: true,
     url:'https://nepallivetoday.com/feed',
     website:'https://nepallivetoday.com', province:'Bagmati' },
 
@@ -118,43 +118,43 @@ export const RSS_FEEDS = [
     fb:'https://www.facebook.com/nagariknews',
     website:'https://nagariknews.nagariknetwork.com', province:'Bagmati' },
 
-  { id:'lokaantar',    name:'Lokaantar',               tier:2, type:'media',
+  { id:'lokaantar',    name:'Lokaantar',               tier:2, type:'media', verified: true,
     url:'https://lokaantar.com/feed',
     website:'https://lokaantar.com', province:'National' },
 
-  { id:'ujyaalo',      name:'Ujyaalo Online',          tier:2, type:'media',
+  { id:'ujyaalo',      name:'Ujyaalo Online',          tier:2, type:'media', verified: true,
     url:'https://ujyaaloonline.com/feed',
     website:'https://ujyaaloonline.com', province:'National' },
 
-  { id:'baahrakhari',  name:'Baahrakhari',             tier:2, type:'media',
+  { id:'baahrakhari',  name:'Baahrakhari',             tier:2, type:'media', verified: true,
     url:'https://baahrakhari.com/feed',
     website:'https://baahrakhari.com', province:'National' },
 
-  { id:'nepalnews',    name:'Nepal News',              tier:2, type:'media',
+  { id:'nepalnews',    name:'Nepal News',              tier:2, type:'media', verified: true,
     url:'https://nepalnews.com/s/rss',
     website:'https://nepalnews.com', province:'Bagmati' },
 
-  { id:'nepalpress',   name:'Nepal Press',             tier:2, type:'media',
+  { id:'nepalpress',   name:'Nepal Press',             tier:2, type:'media', verified: true,
     url:'https://www.nepalpress.com/en/feed',
     website:'https://www.nepalpress.com', province:'Bagmati' },
 
-  { id:'deshsanchar',  name:'DeshSanchar',             tier:2, type:'media',
+  { id:'deshsanchar',  name:'DeshSanchar',             tier:2, type:'media', verified: true,
     url:'https://deshsanchar.com/feed',
     website:'https://deshsanchar.com', province:'Bagmati' },
 
-  { id:'bizage',       name:'Business Age Nepal',      tier:2, type:'media',
+  { id:'bizage',       name:'Business Age Nepal',      tier:2, type:'media', verified: true,
     url:'https://www.businessage.com.np/feed',
     website:'https://www.businessage.com.np', province:'Bagmati' },
 
-  { id:'bizmandu',     name:'Bizmandu',                tier:2, type:'media',
+  { id:'bizmandu',     name:'Bizmandu',                tier:2, type:'media', verified: true,
     url:'https://bizmandu.com/feed',
     website:'https://bizmandu.com', province:'Bagmati' },
 
-  { id:'karobar',      name:'Karobar Daily',           tier:2, type:'media',
+  { id:'karobar',      name:'Karobar Daily',           tier:2, type:'media', verified: true,
     url:'https://www.karobardaily.com/feed',
     website:'https://www.karobardaily.com', province:'Bagmati' },
 
-  { id:'newbiz',       name:'New Business Age',        tier:2, type:'media',
+  { id:'newbiz',       name:'New Business Age',        tier:2, type:'media', verified: true,
     url:'https://newbusinessage.com/rss',
     website:'https://newbusinessage.com', province:'Bagmati' },
 
@@ -777,4 +777,3 @@ export const NEPAL_FM_STATIONS = [
 
 // Note: isSourceVerified is defined once above (uses RSS_FEEDS lookup).
 // NEPAL_FM_STATIONS is defined below for the FM Radio widget.
-
