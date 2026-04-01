@@ -1327,6 +1327,11 @@ body::before {
   font-size: 0.72rem; font-weight: 800; color: var(--text-3);
   letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.5;
 }
+.front-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 .enter-btn {
   background: var(--crimson); color: white; border: none; border-radius: 8px;
   padding: 10px 24px; font-weight: 800; font-size: 0.9rem; cursor: pointer;
@@ -1436,14 +1441,122 @@ body::before {
 
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width:1024px) {
-  .shell { grid-template-columns:1fr; grid-template-areas:"topbar" "main"; }
+  .shell { grid-template-columns:1fr; grid-template-areas:"topbar" "main"; grid-template-rows:auto 1fr; height:auto; min-height:100vh; }
   .sidebar { display:none; }
   .grid-2,.grid-2-1,.grid-3 { grid-template-columns:1fr; }
-  .map-page { grid-template-columns:1fr; }
+  .topbar { flex-wrap: wrap; height: auto; padding: 10px 14px; row-gap: 8px; }
+  .topbar-search { order: 1; width: 100%; max-width: none; }
+  .topbar-search input { width: 100%; }
+  .map-layout { grid-template-columns:1fr; min-height: auto; }
+  .map-side { max-height: none; }
+  .mobile-nav { display: block; }
+  .main { padding-bottom: 86px; }
 }
 @media (max-width:640px) {
   .stats-row { grid-template-columns:1fr 1fr; }
   .page { padding:14px 14px 24px; }
+  .topbar-pill { display: none; }
+  .topbar-icon-btn, .theme-toggle-btn { width:32px; height:32px; font-size: 0.9rem; }
+  .live-pill { padding: 4px 10px; font-size: 0.65rem; }
+  .front-main { padding: 24px 16px; }
+  .front-section-title h2 { font-size: 1.4rem; }
+  .front-section-title p { font-size: 0.9rem; }
+}
+@media (max-width:420px) {
+  .stats-row { grid-template-columns:1fr; }
+}
+
+/* Mobile nav */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 9998;
+  background: var(--bg-glass);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  padding: 8px 10px calc(env(safe-area-inset-bottom) + 8px);
+}
+.mobile-nav-scroll {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+}
+.mobile-nav-scroll::-webkit-scrollbar { display: none; }
+.mobile-nav-btn {
+  min-width: 74px; border: 1px solid var(--border);
+  background: var(--bg-surface); color: var(--text-3);
+  border-radius: 12px; padding: 6px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 0.62rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
+}
+.mobile-nav-btn.active {
+  background: rgba(220,20,60,0.08);
+  border-color: rgba(220,20,60,0.35);
+  color: var(--crimson);
+}
+.mobile-nav-icon { font-size: 0.95rem; }
+.mobile-nav-label { font-size: 0.58rem; letter-spacing: 0.02em; }
+
+/* Map layout helpers */
+.map-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  min-height: 70vh;
+}
+.map-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+.map-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 320px;
+}
+.map-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  min-height: 420px;
+}
+@media (max-width:640px) {
+  .map-panel { min-height: 340px; }
+  .map-side { min-height: auto; }
+}
+
+/* Projects grid */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+/* Front page header responsiveness */
+@media (max-width: 900px) {
+  .front-header { flex-wrap: wrap; gap: 12px; padding: 14px 18px; }
+  .front-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .front-logo .logo-main { font-size: 1.1rem; }
+  .enter-btn { width: 100%; }
+}
+
+/* Image grids on mobile */
+@media (max-width: 768px) {
+  .img-card-grid { max-height: none; overflow: visible; }
+  .img-card-grid-small { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+
+/* FM widget on mobile */
+@media (max-width: 640px) {
+  .fm-widget { right: 14px; bottom: 76px; }
+  .fm-panel { width: min(92vw, 320px); }
 }
 
 /* ── Image-Rich UI Premium Components ────────────────────────── */

@@ -89,6 +89,7 @@ app.get('/api/articles', (req, res) => {
 
     res.json({
       articles: clustered,
+      feedStatus: getFeedStatuses(),
       total: clustered.length,
       timestamp: new Date().toISOString(),
     });

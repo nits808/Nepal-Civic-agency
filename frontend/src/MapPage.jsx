@@ -70,11 +70,10 @@ export function MapPage({ articles }) {
     <div className="page">
       <div className="page-title">🗺️ Nepal Interactive Province Map</div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:16, height:'calc(100vh - 160px)' }}>
+      <div className="map-layout">
 
         {/* ── SVG Map panel ───────────────────────────────────────── */}
-        <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14,
-          overflow:'hidden', position:'relative', boxShadow:'var(--shadow-md)', display:'flex', flexDirection:'column' }}>
+        <div className="map-panel">
 
           {/* Category filter bar */}
           <div style={{ display:'flex', gap:6, flexWrap:'wrap', padding:'10px 14px',
@@ -98,7 +97,7 @@ export function MapPage({ articles }) {
           </div>
 
           {/* SVG fills remaining space */}
-          <div ref={mapRef} style={{ flex:1, position:'relative', overflow:'hidden' }}>
+          <div ref={mapRef} className="map-canvas">
             <svg width="100%" height="100%" viewBox={NEPAL_MAP_VIEWBOX} preserveAspectRatio="xMidYMid meet"
               style={{ background:'linear-gradient(160deg,#eef3ff 0%,#f5f8ff 100%)', display:'block' }}>
               <defs>
@@ -279,7 +278,7 @@ export function MapPage({ articles }) {
         </div>
 
         {/* ── Side panel ───────────────────────────────────────── */}
-        <div style={{ display:'flex', flexDirection:'column', gap:12, overflowY:'auto' }}>
+        <div className="map-side">
           {selected ? (
             <>
               {/* Province detail card */}
@@ -377,4 +376,3 @@ export function MapPage({ articles }) {
     </div>
   );
 }
-

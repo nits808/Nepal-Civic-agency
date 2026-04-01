@@ -162,7 +162,7 @@ export function ProjectsPage() {
       </div>
 
       {/* Projects grid */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(380px,1fr))', gap:14 }}>
+      <div className="projects-grid">
         {filtered.map(proj => {
           const sm     = STATUS_META[proj.status];
           const isOpen = selected === proj.id;
@@ -285,4 +285,3 @@ export function ProjectsPage() {
     </div>
   );
 }
-

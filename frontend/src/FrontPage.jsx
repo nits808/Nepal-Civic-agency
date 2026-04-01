@@ -121,7 +121,7 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
             <span className="logo-sub">Public Information Portal</span>
           </div>
         </div>
-        <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+        <div className="front-actions">
           {backendOnline !== undefined && (
             <div className={`backend-badge ${backendOnline ? 'backend-online' : 'backend-offline'}`}>
               <span className={`conn-dot ${backendOnline ? 'ok' : 'error'}`} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNews } from './useNews.js';
 import { Dashboard } from './Dashboard.jsx';
 import { MapPage } from './MapPage.jsx';
@@ -17,15 +17,26 @@ import PipelineOverview from './PipelineOverview.jsx';
 import SourceManager from './SourceManager.jsx';
 
 const NAV = [
-  { id:'front',      icon:'🏠', label:'Front Page' },
-  { id:'dashboard',  icon:'📊', label:'Dashboard' },
-  { id:'sources',    icon:'📡', label:'Source Engine' },
-  { id:'map',        icon:'🗺️', label:'Nepal Map' },
-  { id:'projects',   icon:'🏗️', label:'Projects Tracker' },
-  { id:'analytics',  icon:'📈', label:'Analytics' },
-  { id:'sentiment',  icon:'🧠', label:'Mood Intelligence' },
-  { id:'explorer',   icon:'🔗', label:'Graph Explorer' },
-  { id:'chat',       icon:'🤖', label:'AI Assistant' },
+  { id:'front',      icon:'ðŸ ', label:'Front Page' },
+  { id:'dashboard',  icon:'ðŸ“Š', label:'Dashboard' },
+  { id:'sources',    icon:'ðŸ“¡', label:'Source Engine' },
+  { id:'map',        icon:'ðŸ—ºï¸', label:'Nepal Map' },
+  { id:'projects',   icon:'ðŸ—ï¸', label:'Projects Tracker' },
+  { id:'analytics',  icon:'ðŸ“ˆ', label:'Analytics' },
+  { id:'sentiment',  icon:'ðŸ§ ', label:'Mood Intelligence' },
+  { id:'explorer',   icon:'ðŸ”—', label:'Graph Explorer' },
+  { id:'chat',       icon:'ðŸ¤–', label:'AI Assistant' },
+];
+
+const MOBILE_NAV = [
+  { id:'front',     icon:'ðŸ ', label:'Home' },
+  { id:'dashboard', icon:'ðŸ“Š', label:'Dash' },
+  { id:'sources',   icon:'ðŸ“¡', label:'Sources' },
+  { id:'map',       icon:'ðŸ—ºï¸', label:'Map' },
+  { id:'projects',  icon:'ðŸ—ï¸', label:'Projects' },
+  { id:'analytics', icon:'ðŸ“ˆ', label:'Analytics' },
+  { id:'sentiment', icon:'ðŸ§ ', label:'Mood' },
+  { id:'chat',      icon:'ðŸ¤–', label:'AI' },
 ];
 
 function getInitialTheme() {
@@ -82,7 +93,7 @@ export default function App() {
     <>
       <FmRadioWidget />
 
-      {/* ── Live article toast (WebSocket push) */}
+      {/* â”€â”€ Live article toast (WebSocket push) */}
       {toastVisible && newArticleToast && (
         <NewArticleToast
           toast={newArticleToast}
@@ -90,7 +101,7 @@ export default function App() {
         />
       )}
 
-      {/* ── Breaking News Ticker */}
+      {/* â”€â”€ Breaking News Ticker */}
       {articles.length > 0 && <BreakingTicker articles={articles} />}
 
       {page === 'front' ? (
@@ -99,12 +110,12 @@ export default function App() {
         </div>
       ) : (
         <div className="shell fade-in">
-          {/* ── Sidebar */}
+          {/* â”€â”€ Sidebar */}
           <aside className="sidebar">
             <div className="sidebar-logo">
               <img className="logo-flag" src="https://giwmscdntwo.gov.np/static/grapejs/img/Nepal-flag.gif" alt="Nepal Flag" />
               <div className="logo-text">Civic Intelligence Graph</div>
-              <div className="logo-sub">v4.0 &nbsp;·&nbsp; {clock.toLocaleTimeString('en-US')}</div>
+              <div className="logo-sub">v4.0 &nbsp;Â·&nbsp; {clock.toLocaleTimeString('en-US')}</div>
             </div>
 
             {/* Backend / WS status */}
@@ -116,7 +127,7 @@ export default function App() {
             {(loading || isRefreshing) && (
               <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-4)', marginBottom: 5 }}>
-                  {loading ? `Fetching ${progress.done}/${totalFeeds} feeds…` : `Syncing ${progress.done}/${totalFeeds}…`}
+                  {loading ? `Fetching ${progress.done}/${totalFeeds} feedsâ€¦` : `Syncing ${progress.done}/${totalFeeds}â€¦`}
                 </div>
                 <div className="progress-rail">
                   <div className="progress-fill" style={{ width: `${pct}%` }} />
@@ -168,7 +179,7 @@ export default function App() {
               })}
             </div>
 
-            {/* 📡 Pipeline Overview (feed health + processing) */}
+            {/* ðŸ“¡ Pipeline Overview (feed health + processing) */}
             <div className="nav-group" style={{ paddingBottom: 0 }}>
               <div className="nav-label">Data Pipeline</div>
               <PipelineOverview
@@ -181,7 +192,7 @@ export default function App() {
               />
             </div>
 
-            {/* 🌏 Earthquake Widget */}
+            {/* ðŸŒ Earthquake Widget */}
             <div className="nav-group" style={{ paddingBottom: 0 }}>
               <div className="nav-label">Seismic Monitor</div>
               <EarthquakeWidget />
@@ -190,9 +201,9 @@ export default function App() {
             <div className="sidebar-footer">
               <div className="conn-status">
                 <span className={`conn-dot ${isRefreshing ? 'refresh' : connStatus}`} />
-                {loading ? `Fetching feeds…` :
-                 isRefreshing ? `Syncing live data…` :
-                 `${connectedFeeds}/${totalFeeds} connected · ${articles.length} articles`}
+                {loading ? `Fetching feedsâ€¦` :
+                 isRefreshing ? `Syncing live dataâ€¦` :
+                 `${connectedFeeds}/${totalFeeds} connected Â· ${articles.length} articles`}
               </div>
               {lastUpdated && (
                 <div style={{ fontSize: '0.62rem', color: 'var(--text-4)', marginTop: 4 }}>
@@ -202,21 +213,21 @@ export default function App() {
             </div>
           </aside>
 
-          {/* ── Topbar */}
+          {/* â”€â”€ Topbar */}
           <header className="topbar">
             <div className="topbar-search">
-              <span className="ico">🔍</span>
+              <span className="ico">ðŸ”</span>
               <input
-                placeholder="Search Nepal civic intelligence…"
+                placeholder="Search Nepal civic intelligenceâ€¦"
                 onKeyDown={e => { if (e.key === 'Enter' && e.target.value) setPage('explorer'); }}
               />
             </div>
 
             <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
               {!loading && [
-                { icon:'📰', count:mediaFeeds, color:'#1a6aff', label:'Media' },
-                { icon:'🏛️', count:govFeeds,   color:'#DC143C', label:'Govt' },
-                { icon:'🌐', count:intlFeeds,  color:'#7c3aed', label:'Intl' },
+                { icon:'ðŸ“°', count:mediaFeeds, color:'#1a6aff', label:'Media' },
+                { icon:'ðŸ›ï¸', count:govFeeds,   color:'#DC143C', label:'Govt' },
+                { icon:'ðŸŒ', count:intlFeeds,  color:'#7c3aed', label:'Intl' },
               ].map((t,i) => (
                 <div key={i} className="topbar-pill" style={{ background:`${t.color}0f`, color:t.color, border:`1px solid ${t.color}25` }}>
                   {t.icon} {t.count} {t.label}
@@ -229,29 +240,45 @@ export default function App() {
               {loading ? `${pct}%` : wsConnected ? 'WS LIVE' : 'LIVE'}
             </div>
 
-            <button className="topbar-icon-btn" title="Refresh all feeds" onClick={refetch}>🔄</button>
+            <button className="topbar-icon-btn" title="Refresh all feeds" onClick={refetch}>ðŸ”„</button>
             <button className="topbar-icon-btn" title="Alerts">
-              🔔
+              ðŸ””
               {!loading && articles.filter(a => a.category === 'disaster').length > 0 &&
                 <span className="badge-dot" />}
             </button>
 
             {/* Dark/Light toggle */}
             <button className="theme-toggle-btn" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
-              {theme === 'dark' ? '☀️' : '🌙'}
+              {theme === 'dark' ? 'â˜€ï¸' : 'ðŸŒ™'}
             </button>
 
-            <button className="topbar-icon-btn" title="Nepal">🇳🇵</button>
+            <button className="topbar-icon-btn" title="Nepal">ðŸ‡³ðŸ‡µ</button>
           </header>
 
-          {/* ── Main content */}
+          {/* â”€â”€ Main content */}
           <main className="main">
             <div className="page-transition">
               {renderPage()}
             </div>
           </main>
+
+          <nav className="mobile-nav">
+            <div className="mobile-nav-scroll">
+              {MOBILE_NAV.map((n) => (
+                <button
+                  key={n.id}
+                  className={`mobile-nav-btn ${page===n.id?'active':''}`}
+                  onClick={() => setPage(n.id)}
+                >
+                  <span className="mobile-nav-icon">{n.icon}</span>
+                  <span className="mobile-nav-label">{n.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
         </div>
       )}
     </>
   );
 }
+
