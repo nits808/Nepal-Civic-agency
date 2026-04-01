@@ -81,31 +81,31 @@ export function ProjectsPage() {
 
   return (
     <div className="page">
-      <div className="page-title">ðŸ—ï¸ Nepal National Projects Tracker</div>
+      <div className="page-title">🏗️ Nepal National Projects Tracker</div>
       <div style={{ fontSize:'0.72rem', color:'var(--text-4)', marginTop:4 }}>
-        Sources: {PROJECT_SOURCE_REGISTRY.length} â€¢ Live sync: {sourcesUsed.length || 0} â€¢{' '}
-        {loadingProjects ? 'syncing nowâ€¦' : `Last sync ${lastSync ? lastSync.toLocaleString() : 'recently'}`}
+        Sources: {PROJECT_SOURCE_REGISTRY.length} | Live sync: {sourcesUsed.length || 0} |{' '}
+        {loadingProjects ? 'syncing now...' : `Last sync ${lastSync ? lastSync.toLocaleString() : 'recently'}`}
       </div>
 
       {/* Summary stats */}
       <div className="stats-row">
         <div className="stat-card" style={{ borderTopColor:'#1a6aff' }}>
-          <div className="stat-icon">ðŸ“‹</div>
+          <div className="stat-icon">📋</div>
           <div className="stat-val">{stats.total}</div>
           <div className="stat-lbl">Total Projects</div>
         </div>
         <div className="stat-card" style={{ borderTopColor:'#059669' }}>
-          <div className="stat-icon">âœ…</div>
+          <div className="stat-icon">✅</div>
           <div className="stat-val">{operating}</div>
           <div className="stat-lbl">Operational</div>
         </div>
         <div className="stat-card" style={{ borderTopColor:'#d97706' }}>
-          <div className="stat-icon">ðŸ”¨</div>
+          <div className="stat-icon">🔨</div>
           <div className="stat-val">{underConst}</div>
           <div className="stat-lbl">Under Construction</div>
         </div>
         <div className="stat-card" style={{ borderTopColor:'#DC143C' }}>
-          <div className="stat-icon">ðŸ’µ</div>
+          <div className="stat-icon">💵</div>
           <div className="stat-val">{budgetPrimary}</div>
           <div className="stat-lbl">Total Investment</div>
           {budgetSecondary && (
@@ -115,12 +115,12 @@ export function ProjectsPage() {
           )}
         </div>
         <div className="stat-card" style={{ borderTopColor:'#7c3aed' }}>
-          <div className="stat-icon">âš¡</div>
+          <div className="stat-icon">⚡</div>
           <div className="stat-val">{hydroPipeline}</div>
           <div className="stat-lbl">Hydro Pipeline</div>
         </div>
         <div className="stat-card" style={{ borderTopColor:'#0891b2' }}>
-          <div className="stat-icon">ðŸ›£ï¸</div>
+          <div className="stat-icon">🛣️</div>
           <div className="stat-val">{roadsUnderway}</div>
           <div className="stat-lbl">Roads Underway</div>
         </div>
@@ -131,7 +131,7 @@ export function ProjectsPage() {
         <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
           <input className="search-input" style={{ maxWidth:280, marginBottom:0 }}
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="ðŸ” Search projects, districts, provincesâ€¦"/>
+            placeholder="🔍 Search projects, districts, provinces..."/>
 
           <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
             {['all',...sectors].map(s => (
@@ -182,7 +182,7 @@ export function ProjectsPage() {
                   <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                     <span style={{ fontSize:'0.62rem', fontWeight:700, padding:'2px 7px', borderRadius:8,
                       background:sm.bg, color:sm.color, border:`1px solid ${sm.color}30` }}>
-                      â— {sm.label}
+                      ● {sm.label}
                     </span>
                     <span style={{ fontSize:'0.62rem', color:'var(--text-4)', padding:'2px 6px',
                       background:'var(--bg-raised)', borderRadius:6, border:'1px solid var(--border)' }}>
@@ -198,9 +198,9 @@ export function ProjectsPage() {
 
               {/* Details row */}
               <div style={{ display:'flex', gap:16, fontSize:'0.7rem', color:'var(--text-3)', marginBottom:10 }}>
-                <span>ðŸ“ {proj.district}</span>
-                <span>ðŸ› {proj.agency}</span>
-                <span>ðŸ“… {proj.startYear}â€“{proj.endYear}</span>
+                <span>📍 {proj.district}</span>
+                <span>🏛️ {proj.agency}</span>
+                <span>📅 {proj.startYear}-{proj.endYear}</span>
               </div>
 
               {/* Progress bar */}
@@ -246,7 +246,7 @@ export function ProjectsPage() {
                     borderRadius:8, borderLeft:`3px solid ${sm.color}`,
                     fontSize:'0.75rem', color:'var(--text-2)', lineHeight:1.7,
                   }}>
-                    <strong style={{ color:sm.color, marginBottom:6, display:'block' }}>ðŸ“… Progress Timeline:</strong>
+                    <strong style={{ color:sm.color, marginBottom:6, display:'block' }}>📅 Progress Timeline:</strong>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {timeline.length ? timeline.map((event, idx) => (
                           <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -268,7 +268,7 @@ export function ProjectsPage() {
               )}
 
               <div style={{ fontSize:'0.65rem', color:'var(--text-4)', marginTop:8, textAlign:'right' }}>
-                {isOpen ? 'â–² Less' : 'â–¼ More details'}
+                {isOpen ? 'Less' : 'More details'}
               </div>
             </div>
           );
@@ -277,7 +277,7 @@ export function ProjectsPage() {
 
       {filtered.length === 0 && (
         <div style={{ textAlign:'center', padding:'60px 20px', color:'var(--text-4)' }}>
-          <div style={{ fontSize:'2rem', marginBottom:8 }}>ðŸ”</div>
+          <div style={{ fontSize:'2rem', marginBottom:8 }}>🔍</div>
           <div style={{ fontWeight:600 }}>No projects match your filter</div>
           <div style={{ fontSize:'0.8rem', marginTop:4 }}>Try clearing filters</div>
         </div>

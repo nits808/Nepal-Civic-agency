@@ -34,9 +34,9 @@ export function ModalProvider({ children }) {
             <div className="article-modal-body">
               <h2 className="article-modal-title">{selectedArticle.title}</h2>
               <div className="article-modal-meta">
-                <span>ðŸ“° {selectedArticle.source}</span>
-                <span>ðŸ“… {selectedArticle.timeAgo}</span>
-                <span>ðŸ“ {selectedArticle.district}, {selectedArticle.province}</span>
+                <span>📰 {selectedArticle.source}</span>
+                <span>📅 {selectedArticle.timeAgo}</span>
+                <span>📍 {selectedArticle.district}, {selectedArticle.province}</span>
               </div>
               <p className="article-modal-desc">{selectedArticle.description}</p>
               

@@ -32,7 +32,7 @@ export function ImageCard({ article }) {
       </div>
       <div className="img-card-body">
         <h3 className="ic-title">{article.title}</h3>
-        <p className="ic-desc">{(article.description || '').substring(0, 100)}â€¦</p>
+        <p className="ic-desc">{(article.description || '').substring(0, 100)}...</p>
         <div className="ic-foot">
           <span style={{ color: clr, fontWeight: 800 }}>{article.source || 'Unknown'}</span>
           <span style={{ color: 'var(--text-4)' }}>&bull; {article.timeAgo || 'just now'}</span>
@@ -75,7 +75,7 @@ function SlideWrapper({ a, clr }) {
           <div className="slide-tag blur-pill" style={{ color: clr }}>
             {(a.category || 'news').toUpperCase()} &bull; {a.source || 'RSS'}
           </div>
-          <div className="hot-indicator">ðŸ”¥ HOT</div>
+          <div className="hot-indicator">🔥 HOT</div>
         </div>
         <div className="slide-title mega-text">{a.title}</div>
         <div className="slide-foot dim-foot" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -90,7 +90,7 @@ function SlideWrapper({ a, clr }) {
   );
 }
 
-// â”€â”€ Skeleton carousel placeholders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Skeleton carousel placeholders ---------------------------------------
 function SkeletonCarousel() {
   return (
     <div className="news-carousel">
@@ -138,24 +138,24 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
         <div className="front-section-title">
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:'10px' }}>
             <div>
-              <h2>ðŸ”¥ The Hottest Briefs</h2>
+              <h2>🔥 The Hottest Briefs</h2>
               <p>Real-time breaking intelligence across all sectors</p>
             </div>
             <div className="live-intel-counter">
               <span className="heartbeat" />
-              <strong>{loading ? 'â€”' : articles.length}</strong> Intelligence Nodes Monitored
+              <strong>{loading ? '-' : articles.length}</strong> Intelligence Nodes Monitored
             </div>
           </div>
         </div>
 
-        {/* Hero Carousel â€” skeleton while loading */}
+        {/* Hero Carousel - skeleton while loading */}
         {loading ? <SkeletonCarousel /> : <NewsCarousel articles={articles} />}
 
         <div className="front-grid">
           {/* Latest News grid */}
           <div className="card">
             <div className="card-head">
-              <span className="card-title">âš¡ Latest Top Stories</span>
+              <span className="card-title">⚡ Latest Top Stories</span>
               {!loading && <span className="card-sub">{articles.length} live articles</span>}
             </div>
             <div className="img-card-grid">
@@ -173,7 +173,7 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
             {(loading || disasterList.length > 0) && (
               <div className="card" style={{ borderTop:'4px solid #ef4444' }}>
                 <div className="card-head">
-                  <span className="card-title" style={{ color:'#ef4444' }}>ðŸš¨ Active Disaster Alerts</span>
+                  <span className="card-title" style={{ color:'#ef4444' }}>🚨 Active Disaster Alerts</span>
                 </div>
                 <div className="img-card-grid-small">
                   {loading
@@ -188,7 +188,7 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
             {(loading || techList.length > 0) && (
               <div className="card" style={{ background:'linear-gradient(135deg,rgba(99,102,241,0.02),rgba(37,99,235,0.02))', borderTop:'4px solid #6366f1' }}>
                 <div className="card-head">
-                  <span className="card-title" style={{ color:'#6366f1' }}>ðŸ’» Technology & Innovation</span>
+                  <span className="card-title" style={{ color:'#6366f1' }}>💻 Technology & Innovation</span>
                 </div>
                 <div className="img-card-grid-small">
                   {loading

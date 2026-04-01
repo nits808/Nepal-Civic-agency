@@ -1,5 +1,5 @@
 ﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// NCIG Frontend â€” Nepal Civic Sentiment Dashboard
+// NCIG Frontend - Nepal Civic Sentiment Dashboard
 // Real-time structured sentiment analytics powered by backend
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 import React, { useState, useEffect, useCallback } from 'react';
@@ -155,7 +155,7 @@ export default function SentimentPage({ articles }) {
   if (loading) return (
     <div className="sent-loading">
       <div className="sent-loading-spinner" />
-      <div>Analyzing {articles.length} articles for Nepal civic sentimentâ€¦</div>
+      <div>Analyzing {articles.length} articles for Nepal civic sentiment...</div>
     </div>
   );
 
@@ -176,7 +176,7 @@ export default function SentimentPage({ articles }) {
       {/* â”€â”€ Header */}
       <div className="sent-hero">
         <div className="sent-hero-left">
-          <h1 className="sent-title">ðŸ§  Nepal Civic Mood Intelligence</h1>
+          <h1 className="sent-title">🧠 Nepal Civic Mood Intelligence</h1>
           <p className="sent-subtitle">
             Structured sentiment analysis across {report.totalArticles} live articles from {Object.keys(report.byCategory || {}).length} sectors
           </p>
@@ -184,8 +184,8 @@ export default function SentimentPage({ articles }) {
             <span className="sent-meta-pill" style={{ color: scoreColor, borderColor: `${scoreColor}30`, background: `${scoreColor}12` }}>
               {gaugeLabelOverall?.emoji} {gaugeLabelOverall?.label || 'Analyzing'}
             </span>
-            <span className="sent-meta-pill">ðŸ“… {new Date(report.generatedAt).toLocaleTimeString()}</span>
-            <span className="sent-meta-pill">ðŸ“° {report.totalArticles} articles</span>
+            <span className="sent-meta-pill">📅 {new Date(report.generatedAt).toLocaleTimeString()}</span>
+            <span className="sent-meta-pill">📰 {report.totalArticles} articles</span>
           </div>
         </div>
         <MoodGauge score={report.overall} />
@@ -194,17 +194,17 @@ export default function SentimentPage({ articles }) {
       {/* â”€â”€ Tab bar */}
       <div className="sent-tabs">
         {[
-          { id:'overview',  label:'ðŸ“Š Overview' },
-          { id:'category',  label:'ðŸ—‚ By Category' },
-          { id:'province',  label:'ðŸ—º By Province' },
-          { id:'signals',   label:'âš¡ Top Signals' },
-          { id:'trend',     label:'ðŸ“ˆ 24h Trend' },
+          { id:'overview',  label:'📊 Overview' },
+          { id:'category',  label:'🗂️ By Category' },
+          { id:'province',  label:'🗺️ By Province' },
+          { id:'signals',   label:'⚡ Top Signals' },
+          { id:'trend',     label:'📈 24h Trend' },
         ].map(t => (
           <button key={t.id} className={`sent-tab-btn ${view === t.id ? 'active' : ''}`} onClick={() => setView(t.id)}>
             {t.label}
           </button>
         ))}
-        <button className="sent-refresh-btn" onClick={loadReport} title="Refresh analysis">â†»</button>
+        <button className="sent-refresh-btn" onClick={loadReport} title="Refresh analysis">↻</button>
       </div>
 
       {/* â”€â”€ Overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
@@ -213,11 +213,11 @@ export default function SentimentPage({ articles }) {
           {/* Score summary cards */}
           <div className="sent-score-cards">
             {[
-              { label:'Overall Mood',     val:`${report.overall > 0 ? '+' : ''}${report.overall}`, color:scoreColor, icon:'ðŸ§­' },
-              { label:'Positive Articles', val:`${report.topPositive?.length || 0}`, color:'#10b981', icon:'â¬†ï¸' },
-              { label:'Negative Articles', val:`${report.topNegative?.length || 0}`, color:'#ef4444', icon:'â¬‡ï¸' },
-              { label:'Sectors Tracked',  val:`${Object.keys(report.byCategory || {}).length}`,   color:'#818cf8', icon:'ðŸ“‹' },
-              { label:'Provinces Tracked',val:`${Object.keys(report.byProvince || {}).length}`,   color:'#f59e0b', icon:'ðŸ—ºï¸' },
+              { label:'Overall Mood',     val:`${report.overall > 0 ? '+' : ''}${report.overall}`, color:scoreColor, icon:'🧭' },
+              { label:'Positive Articles', val:`${report.topPositive?.length || 0}`, color:'#10b981', icon:'⬆️' },
+              { label:'Negative Articles', val:`${report.topNegative?.length || 0}`, color:'#ef4444', icon:'⬇️' },
+              { label:'Sectors Tracked',  val:`${Object.keys(report.byCategory || {}).length}`,   color:'#818cf8', icon:'📋' },
+              { label:'Provinces Tracked',val:`${Object.keys(report.byProvince || {}).length}`,   color:'#f59e0b', icon:'🗺️' },
             ].map((c, i) => (
               <div key={i} className="sent-score-card" style={{ borderTop: `3px solid ${c.color}` }}>
                 <div className="sent-score-icon">{c.icon}</div>
@@ -230,7 +230,7 @@ export default function SentimentPage({ articles }) {
           {/* Top keywords */}
           {report.topKeywords?.length > 0 && (
             <div className="card">
-              <div className="card-head"><span className="card-title">ðŸ”‘ Dominant Sentiment Signals</span></div>
+              <div className="card-head"><span className="card-title">🔑 Dominant Sentiment Signals</span></div>
               <div className="keyword-cloud">
                 {report.topKeywords.slice(0, 16).map((kw, i) => {
                   const kc = kw.weight > 0 ? '#10b981' : '#ef4444';
@@ -253,15 +253,15 @@ export default function SentimentPage({ articles }) {
       {view === 'category' && (
         <div className="card">
           <div className="card-head">
-            <span className="card-title">ðŸ—‚ Sentiment by News Category</span>
+            <span className="card-title">🗂️ Sentiment by News Category</span>
             <span className="card-sub">Ranked by mood score</span>
           </div>
           <div className="sent-bar-list">
             <div className="sent-bar-header">
-              <span>Category</span><span>Sentiment Scale (â€“100 to +100)</span><span>Score</span><span>Articles</span>
+              <span>Category</span><span>Sentiment Scale (-100 to +100)</span><span>Score</span><span>Articles</span>
             </div>
             {catEntries.map(([cat, data]) => (
-              <SentimentBar key={cat} label={`${CAT_ICONS[cat] || 'ðŸ“°'} ${cat}`} score={data.avg} count={data.count} />
+              <SentimentBar key={cat} label={`${CAT_ICONS[cat] || '📰'} ${cat}`} score={data.avg} count={data.count} />
             ))}
           </div>
         </div>
@@ -271,7 +271,7 @@ export default function SentimentPage({ articles }) {
       {view === 'province' && (
         <div className="card">
           <div className="card-head">
-            <span className="card-title">ðŸ—º Provincial Civic Mood</span>
+            <span className="card-title">🗺️ Provincial Civic Mood</span>
             <span className="card-sub">All 7 provinces</span>
           </div>
           <div className="sent-bar-list">
@@ -279,7 +279,7 @@ export default function SentimentPage({ articles }) {
               <span>Province</span><span>Sentiment Scale</span><span>Score</span><span>Articles</span>
             </div>
             {provEntries.map(([prov, data]) => (
-              <SentimentBar key={prov} label={`ðŸ“ ${prov}`} score={data.avg} count={data.count} />
+              <SentimentBar key={prov} label={`📍 ${prov}`} score={data.avg} count={data.count} />
             ))}
           </div>
         </div>
@@ -289,13 +289,13 @@ export default function SentimentPage({ articles }) {
       {view === 'signals' && (
         <div className="sent-signals-grid">
           <div className="card" style={{ borderTop: '3px solid #10b981' }}>
-            <div className="card-head"><span className="card-title">â¬†ï¸ Most Positive Articles</span></div>
+            <div className="card-head"><span className="card-title">⬆️ Most Positive Articles</span></div>
             <div style={{ display:'flex', flexDirection:'column', gap:12, padding:'0 16px 16px' }}>
               {(report.topPositive || []).map((a, i) => <ArticleSignalCard key={i} article={a} type="positive" />)}
             </div>
           </div>
           <div className="card" style={{ borderTop: '3px solid #ef4444' }}>
-            <div className="card-head"><span className="card-title">â¬‡ï¸ Most Negative Articles</span></div>
+            <div className="card-head"><span className="card-title">⬇️ Most Negative Articles</span></div>
             <div style={{ display:'flex', flexDirection:'column', gap:12, padding:'0 16px 16px' }}>
               {(report.topNegative || []).map((a, i) => <ArticleSignalCard key={i} article={a} type="negative" />)}
             </div>
@@ -307,7 +307,7 @@ export default function SentimentPage({ articles }) {
       {view === 'trend' && (
         <div className="card">
           <div className="card-head">
-            <span className="card-title">ðŸ“ˆ 24-Hour Nepal Mood Trend</span>
+            <span className="card-title">📈 24-Hour Nepal Mood Trend</span>
             <span className="card-sub">Hourly civic sentiment index</span>
           </div>
           <div style={{ padding: '8px 0 16px' }}>
