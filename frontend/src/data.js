@@ -524,11 +524,8 @@ export function resolveArticleImage(article) {
     return { url: article.imageUrl, type: 'rss' };
   }
 
-  // Tier 2: Category-contextual from verified pool (Unsplash + picsum)
-  const pool = NEPAL_PHOTO_DB[article.category] || NEPAL_HERO_IMAGES;
-  const seed = (article.title || article.id || '').split('')
-    .reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return { url: pool[seed % pool.length], type: 'contextual' };
+  // No stock fallback: only real article images should be shown
+  return { url: null, type: 'none' };
 }
 
 // Called by img onerror — picsum never 404s
@@ -768,10 +765,6 @@ export function parseRSS(xml, feed) {
         date = new Date().toISOString();
       }
 
-      // Resolve image: real RSS image, or rotate through nepal photo pool
-      const pool = NEPAL_PHOTO_DB[cat] || NEPAL_HERO_IMAGES;
-      const contextualImg = pool[i % pool.length];
-
       results.push({
         id: `${feed.id}-${i}`,
         title,
@@ -784,7 +777,7 @@ export function parseRSS(xml, feed) {
         timeAgo: timeAgo(date),
         source: feed.name,
         feedType: feed.type || 'media',
-        imageUrl: imageUrl || contextualImg,
+        imageUrl: imageUrl || null,
         hasRealImage: !!imageUrl,
       });
     });

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+﻿import React, { createContext, useContext, useState } from 'react';
 
 const ModalContext = createContext();
 
@@ -23,15 +23,20 @@ export function ModalProvider({ children }) {
         <div className="article-modal-overlay" onClick={closeModal}>
           <div className="article-modal-content" onClick={e => e.stopPropagation()}>
             <button className="article-modal-close" onClick={closeModal}>&times;</button>
-            <div className="article-modal-hero" style={{ backgroundImage: `url(${selectedArticle.imageUrl})` }}>
+            <div
+              className="article-modal-hero"
+              style={selectedArticle.imageUrl
+                ? { backgroundImage: `url(${selectedArticle.imageUrl})` }
+                : { background: 'linear-gradient(135deg, rgba(0,56,147,0.2), rgba(220,20,60,0.08))' }
+              }>
               <div className="article-modal-badge">{selectedArticle.category}</div>
             </div>
             <div className="article-modal-body">
               <h2 className="article-modal-title">{selectedArticle.title}</h2>
               <div className="article-modal-meta">
-                <span>📰 {selectedArticle.source}</span>
-                <span>📅 {selectedArticle.timeAgo}</span>
-                <span>📍 {selectedArticle.district}, {selectedArticle.province}</span>
+                <span>ðŸ“° {selectedArticle.source}</span>
+                <span>ðŸ“… {selectedArticle.timeAgo}</span>
+                <span>ðŸ“ {selectedArticle.district}, {selectedArticle.province}</span>
               </div>
               <p className="article-modal-desc">{selectedArticle.description}</p>
               
@@ -51,3 +56,4 @@ export function ModalProvider({ children }) {
 export function useModal() {
   return useContext(ModalContext);
 }
+

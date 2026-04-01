@@ -1,5 +1,5 @@
-// ---------------------------------------------------------------
-// NCIG Frontend � useNews Hook v4.0
+﻿// ---------------------------------------------------------------
+// NCIG Frontend — useNews Hook v4.0
 // Primary: Backend REST API + WebSocket real-time push
 // Fallback: Client-side RSS via CORS proxies (if backend offline)
 // ---------------------------------------------------------------
@@ -13,6 +13,8 @@ const CACHE_KEY    = 'ncig_v4_cache';
 const CACHE_TTL    = 3 * 60_000;       // 3 min cache
 const REFRESH_MS   = 90_000;           // client-side fallback refresh
 const TIMEOUT_MS   = 5000;
+const IMAGE_FETCH_LIMIT = 60;
+const IMAGE_CONCURRENCY = 6;
 
 // -- LocalStorage Cache ---------------------------------------
 function readCache() {
@@ -81,6 +83,48 @@ function dedup(articles) {
   });
 }
 
+function isValidImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  if (url.startsWith('data:')) return false;
+  if (!url.startsWith('http')) return false;
+  if (/pixel|spacer|tracking|blank/i.test(url)) return false;
+  return /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) || url.includes('image');
+}
+
+function extractMetaImage(html) {
+  if (!html) return null;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const candidates = [
+      doc.querySelector('meta[property="og:image"]')?.getAttribute('content'),
+      doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content'),
+      doc.querySelector('meta[property="twitter:image"]')?.getAttribute('content'),
+      doc.querySelector('meta[itemprop="image"]')?.getAttribute('content'),
+      doc.querySelector('link[rel="image_src"]')?.getAttribute('href'),
+    ];
+    return candidates.find(isValidImageUrl) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchOgImage(url) {
+  if (!url) return null;
+  for (const proxy of CORS_PROXIES) {
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+      const r = await fetch(proxy + encodeURIComponent(url), { signal: ctrl.signal });
+      if (!r.ok) continue;
+      const text = await r.text();
+      if (!text || text.length < 200) continue;
+      const img = extractMetaImage(text);
+      if (img && isValidImageUrl(img)) return img;
+    } catch { continue; }
+  }
+  return null;
+}
+
 // -- Main hook ------------------------------------------------
 export function useNews() {
   const [articles,       setArticles]       = useState([]);
@@ -97,6 +141,37 @@ export function useNews() {
   const wsRef        = useRef(null);
   const mountedRef   = useRef(true);
   const wsTimerRef   = useRef(null); // tracks pending reconnect timer
+  const imageCacheRef = useRef(new Map());
+
+  const enhanceImages = useCallback(async (items = []) => {
+    if (!items.length) return;
+    const toFetch = [];
+    items.forEach(a => {
+      if (!a?.link || a.hasRealImage) return;
+      if (imageCacheRef.current.has(a.link)) {
+        const cached = imageCacheRef.current.get(a.link);
+        if (cached) {
+          setArticles(prev => prev.map(p => p.link === a.link ? { ...p, imageUrl: cached, hasRealImage:true } : p));
+        }
+        return;
+      }
+      if (toFetch.length < IMAGE_FETCH_LIMIT) toFetch.push(a);
+    });
+    if (!toFetch.length) return;
+
+    let idx = 0;
+    const worker = async () => {
+      while (idx < toFetch.length && mountedRef.current) {
+        const article = toFetch[idx++];
+        const img = await fetchOgImage(article.link);
+        imageCacheRef.current.set(article.link, img || null);
+        if (img && mountedRef.current) {
+          setArticles(prev => prev.map(p => p.link === article.link ? { ...p, imageUrl: img, hasRealImage:true } : p));
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: IMAGE_CONCURRENCY }, worker));
+  }, []);
 
   // -- WebSocket connection ---------------------------------
   const connectWS = useCallback(() => {
@@ -125,6 +200,7 @@ export function useNews() {
               setFeedStatus(feedStatus);
               setLastUpdated(new Date());
               writeCache(articles, feedStatus);
+              enhanceImages(articles);
             }).catch(() => {});
           }
         } catch { /* bad JSON */ }
@@ -139,7 +215,7 @@ export function useNews() {
 
       ws.onerror = () => ws.close();
     } catch { /* WS not available */ }
-  }, []);
+  }, [enhanceImages]);
 
   const fetchClientFallback = useCallback(async () => {
     console.log('[useNews] Using client-side RSS fallback');
@@ -174,7 +250,8 @@ export function useNews() {
     setFeedStatus({ ...status });
     setLastUpdated(new Date());
     writeCache(final, status, 'client');
-  }, []);
+    enhanceImages(final);
+  }, [enhanceImages]);
   // -- Main fetch function ----------------------------------
   const fetch_ = useCallback(async (isRefresh = false) => {
     if (!mountedRef.current) return;
@@ -212,6 +289,7 @@ export function useNews() {
         setProgress({ done: RSS_FEEDS.length, total: RSS_FEEDS.length });
         writeCache(unique, feedStatus, 'backend');
         connectWS();
+        enhanceImages(unique);
       } catch (err) {
         console.warn('[Backend fetch failed]', err.message);
         setBackendOnline(false);
@@ -224,7 +302,7 @@ export function useNews() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [connectWS, fetchClientFallback]);
+  }, [connectWS, fetchClientFallback, enhanceImages]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -251,6 +329,7 @@ export function useNews() {
     backendOnline, wsConnected, newArticleToast,
   };
 }
+
 
 
 

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { CAT_COLORS, CAT_ICONS, resolveArticleImage } from './data.js';
 import { FeedItem, articleLocation } from './Dashboard.jsx';
 import { useModal } from './ModalContext.jsx';
@@ -8,25 +8,31 @@ export function ImageCard({ article }) {
   const clr = CAT_COLORS[article.category] || '#64748b';
   const { openModal } = useModal();
   const img = resolveArticleImage(article);
+  const hasImg = !!img.url;
   return (
     <a
       className="img-card"
       href={article.link || '#'}
-      onClick={e => { e.preventDefault(); openModal({ ...article, imageUrl: img.url }); }}
+      onClick={e => { e.preventDefault(); openModal({ ...article, imageUrl: hasImg ? img.url : null }); }}
       target="_blank"
       rel="noopener noreferrer"
     >
-      <div className="img-card-top" style={{ backgroundImage: `url(${img.url})` }}>
+      <div
+        className="img-card-top"
+        style={hasImg
+          ? { backgroundImage: `url(${img.url})` }
+          : { background: `linear-gradient(135deg,${clr}25,${clr}05)` }
+        }>
         <div className="img-card-overlay">
           <span className="cat-pill" style={{ background: clr }}>
             {CAT_ICONS[article.category] || ''} {article.category || 'News'}
           </span>
-          {img.type === 'rss' && <span className="real-img-badge" title="Real article photo">📸</span>}
+          {hasImg && <span className="real-img-badge" title="Real article photo">📸</span>}
         </div>
       </div>
       <div className="img-card-body">
         <h3 className="ic-title">{article.title}</h3>
-        <p className="ic-desc">{(article.description || '').substring(0, 100)}…</p>
+        <p className="ic-desc">{(article.description || '').substring(0, 100)}â€¦</p>
         <div className="ic-foot">
           <span style={{ color: clr, fontWeight: 800 }}>{article.source || 'Unknown'}</span>
           <span style={{ color: 'var(--text-4)' }}>&bull; {article.timeAgo || 'just now'}</span>
@@ -51,21 +57,25 @@ export function NewsCarousel({ articles }) {
 function SlideWrapper({ a, clr }) {
   const { openModal } = useModal();
   const img = resolveArticleImage(a);
+  const hasImg = !!img.url;
   return (
     <a
       className="carousel-slide hero-slide"
       href={a.link || '#'}
-      onClick={e => { e.preventDefault(); openModal({ ...a, imageUrl: img.url }); }}
+      onClick={e => { e.preventDefault(); openModal({ ...a, imageUrl: hasImg ? img.url : null }); }}
       target="_blank"
       rel="noopener noreferrer"
-      style={{ backgroundImage: `url(${img.url})` }}
+      style={hasImg
+        ? { backgroundImage: `url(${img.url})` }
+        : { background: `linear-gradient(135deg,${clr}35,${clr}05)` }
+      }
     >
       <div className="slide-gradient">
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
           <div className="slide-tag blur-pill" style={{ color: clr }}>
             {(a.category || 'news').toUpperCase()} &bull; {a.source || 'RSS'}
           </div>
-          <div className="hot-indicator">🔥 HOT</div>
+          <div className="hot-indicator">ðŸ”¥ HOT</div>
         </div>
         <div className="slide-title mega-text">{a.title}</div>
         <div className="slide-foot dim-foot" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -80,7 +90,7 @@ function SlideWrapper({ a, clr }) {
   );
 }
 
-// ── Skeleton carousel placeholders ──────────────────────────
+// â”€â”€ Skeleton carousel placeholders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SkeletonCarousel() {
   return (
     <div className="news-carousel">
@@ -128,24 +138,24 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
         <div className="front-section-title">
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:'10px' }}>
             <div>
-              <h2>🔥 The Hottest Briefs</h2>
+              <h2>ðŸ”¥ The Hottest Briefs</h2>
               <p>Real-time breaking intelligence across all sectors</p>
             </div>
             <div className="live-intel-counter">
               <span className="heartbeat" />
-              <strong>{loading ? '—' : articles.length}</strong> Intelligence Nodes Monitored
+              <strong>{loading ? 'â€”' : articles.length}</strong> Intelligence Nodes Monitored
             </div>
           </div>
         </div>
 
-        {/* Hero Carousel — skeleton while loading */}
+        {/* Hero Carousel â€” skeleton while loading */}
         {loading ? <SkeletonCarousel /> : <NewsCarousel articles={articles} />}
 
         <div className="front-grid">
           {/* Latest News grid */}
           <div className="card">
             <div className="card-head">
-              <span className="card-title">⚡ Latest Top Stories</span>
+              <span className="card-title">âš¡ Latest Top Stories</span>
               {!loading && <span className="card-sub">{articles.length} live articles</span>}
             </div>
             <div className="img-card-grid">
@@ -163,7 +173,7 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
             {(loading || disasterList.length > 0) && (
               <div className="card" style={{ borderTop:'4px solid #ef4444' }}>
                 <div className="card-head">
-                  <span className="card-title" style={{ color:'#ef4444' }}>🚨 Active Disaster Alerts</span>
+                  <span className="card-title" style={{ color:'#ef4444' }}>ðŸš¨ Active Disaster Alerts</span>
                 </div>
                 <div className="img-card-grid-small">
                   {loading
@@ -178,7 +188,7 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
             {(loading || techList.length > 0) && (
               <div className="card" style={{ background:'linear-gradient(135deg,rgba(99,102,241,0.02),rgba(37,99,235,0.02))', borderTop:'4px solid #6366f1' }}>
                 <div className="card-head">
-                  <span className="card-title" style={{ color:'#6366f1' }}>💻 Technology & Innovation</span>
+                  <span className="card-title" style={{ color:'#6366f1' }}>ðŸ’» Technology & Innovation</span>
                 </div>
                 <div className="img-card-grid-small">
                   {loading
@@ -194,3 +204,4 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
     </div>
   );
 }
+

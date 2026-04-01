@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CAT_COLORS, CAT_ICONS, PROVINCES, resolveArticleImage, isSourceVerified } from './data.js';
 import { useModal } from './ModalContext.jsx';
 import { SkeletonFeedItem } from './UIComponents.jsx';
 
-// ── Shared sub-components ────────────────────────────────────
+// â”€â”€ Shared sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function formatNewsDate(isoDate) {
   if (!isoDate || typeof isoDate !== 'string') return '';
@@ -30,13 +30,13 @@ export function StatCard({ icon, value, label, sub, color }) {
   );
 }
 
-// ── Read time estimator ──────────────────────────────────────
+// â”€â”€ Read time estimator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function readTime(text) {
   const words = (text || '').trim().split(/\s+/).length;
   return Math.max(1, Math.ceil(words / 200));
 }
 
-// ── Source initials map (Online Khabar / KP style badge) ─────
+// â”€â”€ Source initials map (Online Khabar / KP style badge) â”€â”€â”€â”€â”€
 const SOURCE_INITIALS = {
   'The Kathmandu Post':'KP',  'The Himalayan Times':'HT',
   'My Republica':'MR',        'Nepali Times':'NT',
@@ -53,9 +53,9 @@ function srcInitials(name) {
   return SOURCE_INITIALS[name] || name.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
 }
 
-// ═══════════════════════════════════════════════════════════════
-// FeedItem — Upgraded (Online Khabar + KP + MyRepublica inspired)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// FeedItem â€” Upgraded (Online Khabar + KP + MyRepublica inspired)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 export function FeedItem({ article, compact = false }) {
   const c   = article.category || 'politics';
   const clr = CAT_COLORS[c] || '#6b7280';
@@ -76,7 +76,7 @@ export function FeedItem({ article, compact = false }) {
   const hasImg = article.hasRealImage && img.url;
   const verified = isSourceVerified(article.source);
 
-  // ── COMPACT mode — MyRepublica "Latest" style high-density list ──
+  // â”€â”€ COMPACT mode â€” MyRepublica "Latest" style high-density list â”€â”€
   if (compact) {
     return (
       <a className={`feed-compact cat-${c}`}
@@ -87,11 +87,11 @@ export function FeedItem({ article, compact = false }) {
           <div className="feed-compact-meta">
             <span className="feed-src-badge" style={{ background:`${clr}20`, color:clr }}>
               {srcInitials(article.source)}
-              {verified && <span className="verified-tick" title="Verified Source"> ✓</span>}
+              {verified && <span className="verified-tick" title="Verified Source"> âœ“</span>}
             </span>
             {isBreaking && <span className="breaking-pill">BREAKING</span>}
             <span className="feed-ct">{article.timeAgo || 'just now'}</span>
-            <span className="feed-readtime">· {mins}m</span>
+            <span className="feed-readtime">Â· {mins}m</span>
           </div>
           <div className="feed-compact-title">{article.title || 'Untitled Article'}</div>
         </div>
@@ -103,7 +103,7 @@ export function FeedItem({ article, compact = false }) {
     );
   }
 
-  // ── FEATURE card — KP + Online Khabar inspired ───────────────
+  // â”€â”€ FEATURE card â€” KP + Online Khabar inspired â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <a className={`feed-item cat-${c}`}
       href={article.link || '#'}
@@ -122,9 +122,9 @@ export function FeedItem({ article, compact = false }) {
           </span>
           <span className="feed-source-name">
             {article.source}
-            {verified && <span className="verified-tick" title="Verified Source"> ✓</span>}
+            {verified && <span className="verified-tick" title="Verified Source"> âœ“</span>}
           </span>
-          {isBreaking && <span className="breaking-pill">🔴 BREAKING</span>}
+          {isBreaking && <span className="breaking-pill">ðŸ”´ BREAKING</span>}
           <span className="feed-time-right">{article.timeAgo}</span>
         </div>
 
@@ -134,14 +134,14 @@ export function FeedItem({ article, compact = false }) {
         {/* Summary */}
         {summary && (
           <div className="mini-summary">
-            {summary.slice(0, 160)}{summary.length > 160 ? '…' : ''}
+            {summary.slice(0, 160)}{summary.length > 160 ? 'â€¦' : ''}
           </div>
         )}
 
         {/* Footer: location + read time */}
         <div className="feed-footer-row">
-          <span className="feed-loc-pin">📍 {loc}</span>
-          <span className="feed-readtime">⏱ {mins} min read</span>
+          <span className="feed-loc-pin">ðŸ“ {loc}</span>
+          <span className="feed-readtime">â± {mins} min read</span>
         </div>
       </div>
 
@@ -155,10 +155,10 @@ export function FeedItem({ article, compact = false }) {
           <div className="feed-thumb-overlay" />
         </div>
       ) : (
-        /* KP Opinion style: styled text tile — NO fake stock photos */
+        /* KP Opinion style: styled text tile â€” NO fake stock photos */
         <div className="feed-text-card"
           style={{ background:`linear-gradient(135deg,${clr}18,${clr}05)`, borderLeft:`3px solid ${clr}40` }}>
-          <div className="feed-text-card-icon">{CAT_ICONS[c] || '📰'}</div>
+          <div className="feed-text-card-icon">{CAT_ICONS[c] || 'ðŸ“°'}</div>
           <div className="feed-text-card-cat" style={{ color: clr }}>{c.toUpperCase()}</div>
           <div className="feed-text-card-src">{srcInitials(article.source)}</div>
         </div>
@@ -167,7 +167,7 @@ export function FeedItem({ article, compact = false }) {
   );
 }
 
-// ── Tooltip for charts ───────────────────────────────────────
+// â”€â”€ Tooltip for charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TTip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const p = payload[0];
@@ -179,16 +179,16 @@ const TTip = ({ active, payload }) => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Tab: Overview (charts + source performance)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function OverviewTab({ articles, loading, stats }) {
   return (
     <>
       <div className="grid-2 mb-4">
         <div className="card">
           <div className="card-head">
-            <span className="card-title">📊 Category Breakdown</span>
+            <span className="card-title">ðŸ“Š Category Breakdown</span>
             <span className="card-sub">{articles.length} articles</span>
           </div>
           {loading ? <div className="skel" style={{ height:220 }} /> : (
@@ -208,7 +208,7 @@ function OverviewTab({ articles, loading, stats }) {
 
         <div className="card">
           <div className="card-head">
-            <span className="card-title">🗺️ Coverage by Province</span>
+            <span className="card-title">ðŸ—ºï¸ Coverage by Province</span>
             <span className="card-sub">7 provinces</span>
           </div>
           {loading ? <div className="skel" style={{ height:220 }} /> : (
@@ -229,7 +229,7 @@ function OverviewTab({ articles, loading, stats }) {
 
       <div className="card mb-4">
         <div className="card-head">
-          <span className="card-title">📡 Source Performance</span>
+          <span className="card-title">ðŸ“¡ Source Performance</span>
           <span className="card-sub">{Object.keys(stats.bySrc).length} active sources</span>
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -254,9 +254,9 @@ function OverviewTab({ articles, loading, stats }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Tab: Category News feed with Summary header + view-mode toggle
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
   const [viewMode, setViewMode] = useState('feature'); // 'feature' | 'compact'
 
@@ -277,7 +277,7 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
   }, [articles, category, search]);
 
   const catColor = category === 'provincial' ? '#f59e0b' : (CAT_COLORS[category] || '#1a6aff');
-  const catIcon  = category === 'provincial' ? '📍' : (CAT_ICONS[category] || '📄');
+  const catIcon  = category === 'provincial' ? 'ðŸ“' : (CAT_ICONS[category] || 'ðŸ“„');
 
   const catArticles = useMemo(() => {
     if (category === 'provincial') return articles.filter(a => a.province && a.province !== 'National' && a.province !== 'International');
@@ -310,7 +310,7 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
         <div className="card mb-4" style={{ borderTop:`3px solid ${catColor}`, background:`linear-gradient(135deg,${catColor}06 0%,white 100%)` }}>
           <div className="card-head">
             <span className="card-title">
-              {catIcon} {category === 'all' ? 'All Nepal News' : category === 'provincial' ? 'Provincial & Local News' : category.charAt(0).toUpperCase()+category.slice(1)} — Summary
+              {catIcon} {category === 'all' ? 'All Nepal News' : category === 'provincial' ? 'Provincial & Local News' : category.charAt(0).toUpperCase()+category.slice(1)} â€” Summary
             </span>
             <span style={{ fontSize:'0.72rem', fontWeight:700, padding:'3px 10px', borderRadius:12, background:`${catColor}15`, color:catColor, border:`1px solid ${catColor}30` }}>
               {catArticles.length} articles
@@ -325,14 +325,14 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
             {topProvince && (
               <div style={{ padding:'10px 14px', background:'var(--bg-raised)', borderRadius:8, borderLeft:'3px solid #1a6aff' }}>
                 <div style={{ fontSize:'0.65rem', color:'var(--text-4)', fontWeight:600, marginBottom:4 }}>TOP PROVINCE</div>
-                <div style={{ fontSize:'0.9rem', fontWeight:800, color:'var(--text-1)' }}>📍 {topProvince[0]}</div>
+                <div style={{ fontSize:'0.9rem', fontWeight:800, color:'var(--text-1)' }}>ðŸ“ {topProvince[0]}</div>
                 <div style={{ fontSize:'0.68rem', color:'var(--text-3)' }}>{topProvince[1]} articles</div>
               </div>
             )}
             {topSource && (
               <div style={{ padding:'10px 14px', background:'var(--bg-raised)', borderRadius:8, borderLeft:'3px solid #7c3aed' }}>
                 <div style={{ fontSize:'0.65rem', color:'var(--text-4)', fontWeight:600, marginBottom:4 }}>TOP SOURCE</div>
-                <div style={{ fontSize:'0.85rem', fontWeight:800, color:'var(--text-1)' }}>📰 {topSource[0]}</div>
+                <div style={{ fontSize:'0.85rem', fontWeight:800, color:'var(--text-1)' }}>ðŸ“° {topSource[0]}</div>
                 <div style={{ fontSize:'0.68rem', color:'var(--text-3)' }}>{topSource[1]} articles</div>
               </div>
             )}
@@ -340,7 +340,7 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
               <div style={{ padding:'10px 14px', background:'var(--bg-raised)', borderRadius:8, borderLeft:'3px solid #059669' }}>
                 <div style={{ fontSize:'0.65rem', color:'var(--text-4)', fontWeight:600, marginBottom:4 }}>LATEST</div>
                 <div style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-1)', lineHeight:1.4 }}>
-                  {latest.title.slice(0,60)}{latest.title.length>60?'…':''}
+                  {latest.title.slice(0,60)}{latest.title.length>60?'â€¦':''}
                 </div>
                 <div style={{ fontSize:'0.65rem', color:'var(--text-4)', marginTop:3 }}>{latest.timeAgo}</div>
               </div>
@@ -361,28 +361,28 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
           </span>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span className="card-sub">
-              {loading ? '⏳ Fetching…' : `${catArticles.length} total`}
+              {loading ? 'â³ Fetchingâ€¦' : `${catArticles.length} total`}
             </span>
-            {/* View Mode Toggle — Feature ▦ / Compact ☰ */}
+            {/* View Mode Toggle â€” Feature â–¦ / Compact â˜° */}
             <div className="view-toggle">
               <button
                 className={`view-toggle-btn${viewMode==='feature'?' active':''}`}
                 onClick={() => setViewMode('feature')}
-                title="Feature cards — image + summary">
-                ▦
+                title="Feature cards â€” image + summary">
+                â–¦
               </button>
               <button
                 className={`view-toggle-btn${viewMode==='compact'?' active':''}`}
                 onClick={() => setViewMode('compact')}
-                title="Compact list — high density">
-                ☰
+                title="Compact list â€” high density">
+                â˜°
               </button>
             </div>
           </div>
         </div>
 
         <input className="search-input"
-          placeholder={`🔍 Search ${category==='all'?'all news':category+' news'}…`}
+          placeholder={`ðŸ” Search ${category==='all'?'all news':category+' news'}â€¦`}
           value={search} onChange={e => setSearch(e.target.value)}/>
 
         <div className={`feed${viewMode==='compact'?' feed-compact-list':''}`}
@@ -398,9 +398,9 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
                   </div>
                   <div style={{ fontSize:'0.78rem', color:'var(--text-4)', lineHeight:1.7 }}>
                     {search
-                      ? `No results for "${search}" — try different keywords`
+                      ? `No results for "${search}" â€” try different keywords`
                       : articles.length === 0
-                        ? 'Feeds are loading. Click 🔄 Refresh in the topbar.'
+                        ? 'Feeds are loading. Click ðŸ”„ Refresh in the topbar.'
                         : `None of the ${articles.length} loaded articles matched this category. Try the "All News" tab.`
                     }
                   </div>
@@ -414,26 +414,26 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Main Dashboard
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const TABS = [
-  { id:'overview',       label:'Overview',         icon:'📊' },
-  { id:'all',            label:'All News',         icon:'📰' },
-  { id:'provincial',     label:'Provincial',       icon:'📍' },
-  { id:'international',  label:'International',    icon:'🌎' },
-  { id:'politics',       label:'Politics',         icon:'🏛️' },
-  { id:'economy',        label:'Economy',          icon:'💰' },
-  { id:'technology',     label:'Technology',       icon:'💻' },
-  { id:'disaster',       label:'Disaster',         icon:'🚨' },
-  { id:'health',         label:'Health',           icon:'🏥' },
-  { id:'infrastructure', label:'Infrastructure',   icon:'🏗️' },
-  { id:'education',      label:'Education',        icon:'🎓' },
-  { id:'sports',         label:'Sports',           icon:'⚽' },
-  { id:'tourism',        label:'Tourism',          icon:'✈️' },
-  { id:'environment',    label:'Environment',      icon:'🌍' },
-  { id:'law',            label:'Law & Crime',      icon:'⚖️' },
+  { id:'overview',       label:'Overview',         icon:'ðŸ“Š' },
+  { id:'all',            label:'All News',         icon:'ðŸ“°' },
+  { id:'provincial',     label:'Provincial',       icon:'ðŸ“' },
+  { id:'international',  label:'International',    icon:'ðŸŒŽ' },
+  { id:'politics',       label:'Politics',         icon:'ðŸ›ï¸' },
+  { id:'economy',        label:'Economy',          icon:'ðŸ’°' },
+  { id:'technology',     label:'Technology',       icon:'ðŸ’»' },
+  { id:'disaster',       label:'Disaster',         icon:'ðŸš¨' },
+  { id:'health',         label:'Health',           icon:'ðŸ¥' },
+  { id:'infrastructure', label:'Infrastructure',   icon:'ðŸ—ï¸' },
+  { id:'education',      label:'Education',        icon:'ðŸŽ“' },
+  { id:'sports',         label:'Sports',           icon:'âš½' },
+  { id:'tourism',        label:'Tourism',          icon:'âœˆï¸' },
+  { id:'environment',    label:'Environment',      icon:'ðŸŒ' },
+  { id:'law',            label:'Law & Crime',      icon:'âš–ï¸' },
 ];
 
 export function Dashboard({ articles, loading, lastUpdated, refetch }) {
@@ -468,21 +468,21 @@ export function Dashboard({ articles, loading, lastUpdated, refetch }) {
       {/* Disaster banner */}
       {!dismissed && disasterArticles.length > 0 && (
         <div className="alert-strip">
-          <span className="a-icon">🚨</span>
+          <span className="a-icon">ðŸš¨</span>
           <span className="a-text">{disasterArticles[0].title}</span>
           <span className="a-time">{disasterArticles[0].timeAgo}</span>
-          <button className="a-close" onClick={() => setDismissed(true)}>✕</button>
+          <button className="a-close" onClick={() => setDismissed(true)}>âœ•</button>
         </div>
       )}
 
       {/* Stat cards */}
       <div className="stats-row">
-        <StatCard icon="📰" value={loading?'…':articles.length} label="Total Articles" sub="Live feeds" />
-        <StatCard icon="🚨" value={loading?'…':(stats.byCat.disaster||0)} label="Disaster" sub="Auto-detected" color="#ef4444" />
-        <StatCard icon="🏛️" value={loading?'…':(stats.byCat.politics||0)} label="Politics" sub="Tracked" color="#3b82f6" />
-        <StatCard icon="💰" value={loading?'…':(stats.byCat.economy||0)} label="Economy" sub="Analyzed" color="#f59e0b" />
-        <StatCard icon="🏥" value={loading?'…':(stats.byCat.health||0)} label="Health" sub="Monitored" color="#ec4899" />
-        <StatCard icon="🏗️" value={loading?'…':(stats.byCat.infrastructure||0)} label="Infrastructure" sub="Tracked" color="#8b5cf6" />
+        <StatCard icon="ðŸ“°" value={loading?'â€¦':articles.length} label="Total Articles" sub="Live feeds" />
+        <StatCard icon="ðŸš¨" value={loading?'â€¦':(stats.byCat.disaster||0)} label="Disaster" sub="Auto-detected" color="#ef4444" />
+        <StatCard icon="ðŸ›ï¸" value={loading?'â€¦':(stats.byCat.politics||0)} label="Politics" sub="Tracked" color="#3b82f6" />
+        <StatCard icon="ðŸ’°" value={loading?'â€¦':(stats.byCat.economy||0)} label="Economy" sub="Analyzed" color="#f59e0b" />
+        <StatCard icon="ðŸ¥" value={loading?'â€¦':(stats.byCat.health||0)} label="Health" sub="Monitored" color="#ec4899" />
+        <StatCard icon="ðŸ—ï¸" value={loading?'â€¦':(stats.byCat.infrastructure||0)} label="Infrastructure" sub="Tracked" color="#8b5cf6" />
       </div>
 
       {/* Tab bar */}
@@ -522,7 +522,7 @@ export function Dashboard({ articles, loading, lastUpdated, refetch }) {
       {/* Refresh bar */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
         <div style={{ fontSize:'0.78rem', color:'var(--text-4)' }}>
-          {loading ? '⏳ Fetching live news…' : `✅ ${articles.length} articles loaded from ${Object.keys(stats.bySrc).length} sources`}
+          {loading ? 'â³ Fetching live newsâ€¦' : `âœ… ${articles.length} articles loaded from ${Object.keys(stats.bySrc).length} sources`}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {lastUpdated && <span style={{ fontSize:'0.68rem', color:'var(--text-4)' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
@@ -530,7 +530,7 @@ export function Dashboard({ articles, loading, lastUpdated, refetch }) {
             padding:'5px 13px', borderRadius:6, fontSize:'0.72rem', fontWeight:700,
             background:'rgba(59,130,246,0.12)', border:'1px solid rgba(59,130,246,0.3)',
             color:'#60a5fa', cursor:'pointer',
-          }}>🔄 Refresh</button>
+          }}>ðŸ”„ Refresh</button>
         </div>
       </div>
 
@@ -548,3 +548,4 @@ export function Dashboard({ articles, loading, lastUpdated, refetch }) {
     </div>
   );
 }
+
