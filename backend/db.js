@@ -53,6 +53,13 @@ export function initDB() {
       fetched_at  INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
+    CREATE TABLE IF NOT EXISTS feed_http_cache (
+      feed_id       TEXT PRIMARY KEY,
+      etag          TEXT,
+      last_modified TEXT,
+      updated_at    INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
     CREATE INDEX IF NOT EXISTS idx_articles_date     ON articles(date DESC);
     CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category);
     CREATE INDEX IF NOT EXISTS idx_articles_province ON articles(province);
@@ -124,10 +131,20 @@ export function upsertArticles(articles) {
 
 // ── Upsert feed status ───────────────────────────────────────
 export function upsertFeedStatus(feedId, feedName, feedType, ok, count, error = null) {
+  const existing = getDB().prepare(`
+    SELECT article_count
+    FROM feed_status
+    WHERE feed_id = ?
+  `).get(feedId);
+
+  const normalizedCount = Number.isFinite(count)
+    ? count
+    : (existing?.article_count || 0);
+
   getDB().prepare(`
     INSERT OR REPLACE INTO feed_status (feed_id, feed_name, feed_type, ok, article_count, last_fetched, error_msg)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(feedId, feedName, feedType, ok ? 1 : 0, count, new Date().toISOString(), error);
+  `).run(feedId, feedName, feedType, ok ? 1 : 0, normalizedCount, new Date().toISOString(), error);
 }
 
 // ── Query articles ───────────────────────────────────────────
@@ -173,6 +190,23 @@ export function cacheOgImage(url, ogImage) {
 export function getCachedOgImage(url) {
   const row = getDB().prepare('SELECT og_image FROM og_image_cache WHERE url = ?').get(url);
   return row?.og_image || null;
+}
+
+export function getFeedHttpCache(feedId) {
+  return getDB()
+    .prepare('SELECT etag, last_modified FROM feed_http_cache WHERE feed_id = ?')
+    .get(feedId) || null;
+}
+
+export function upsertFeedHttpCache(feedId, etag = null, lastModified = null) {
+  getDB().prepare(`
+    INSERT INTO feed_http_cache (feed_id, etag, last_modified, updated_at)
+    VALUES (?, ?, ?, unixepoch())
+    ON CONFLICT(feed_id) DO UPDATE SET
+      etag = excluded.etag,
+      last_modified = excluded.last_modified,
+      updated_at = unixepoch()
+  `).run(feedId, etag, lastModified);
 }
 
 // ── Stats ────────────────────────────────────────────────────

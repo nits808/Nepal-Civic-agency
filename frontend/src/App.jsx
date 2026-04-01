@@ -1,20 +1,41 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useNews } from './useNews.js';
-import { Dashboard } from './Dashboard.jsx';
-import { MapPage } from './MapPage.jsx';
-import { AnalyticsPage } from './AnalyticsPage.jsx';
-import { ChatPage } from './ChatPage.jsx';
-import { ExplorerPage } from './ExplorerPage.jsx';
-import { ProjectsPage } from './ProjectsPage.jsx';
 import { RSS_FEEDS, FEED_TYPES } from './data.js';
 import FrontPage from './FrontPage.jsx';
 import FmRadioWidget from './FmRadioWidget.jsx';
 import BreakingTicker from './BreakingTicker.jsx';
 import EarthquakeWidget from './EarthquakeWidget.jsx';
 import { NewArticleToast, BackendStatus } from './UIComponents.jsx';
-import SentimentPage from './SentimentPage.jsx';
 import PipelineOverview from './PipelineOverview.jsx';
-import SourceManager from './SourceManager.jsx';
+
+const DashboardPage = lazy(() =>
+  import('./Dashboard.jsx').then((m) => ({ default: m.Dashboard }))
+);
+const MapPage = lazy(() =>
+  import('./MapPage.jsx').then((m) => ({ default: m.MapPage }))
+);
+const AnalyticsPage = lazy(() =>
+  import('./AnalyticsPage.jsx').then((m) => ({ default: m.AnalyticsPage }))
+);
+const ChatPage = lazy(() =>
+  import('./ChatPage.jsx').then((m) => ({ default: m.ChatPage }))
+);
+const ExplorerPage = lazy(() =>
+  import('./ExplorerPage.jsx').then((m) => ({ default: m.ExplorerPage }))
+);
+const ProjectsPage = lazy(() =>
+  import('./ProjectsPage.jsx').then((m) => ({ default: m.ProjectsPage }))
+);
+const SentimentPage = lazy(() => import('./SentimentPage.jsx'));
+const SourceManager = lazy(() => import('./SourceManager.jsx'));
+
+function PageLoader() {
+  return (
+    <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-3)' }}>
+      Loading page...
+    </div>
+  );
+}
 
 const NAV = [
   { id:'front',      icon:'🏠', label:'Front Page' },
@@ -77,7 +98,7 @@ export default function App() {
 
   const renderPage = () => {
     switch (page) {
-      case 'dashboard':  return <Dashboard articles={articles} loading={loading} lastUpdated={lastUpdated} refetch={refetch} progress={progress} totalFeeds={totalFeeds} />;
+      case 'dashboard':  return <DashboardPage articles={articles} loading={loading} lastUpdated={lastUpdated} refetch={refetch} progress={progress} totalFeeds={totalFeeds} />;
       case 'sources':    return <SourceManager feedStatus={feedStatus} />;
       case 'map':        return <MapPage articles={articles} />;
       case 'projects':   return <ProjectsPage />;
@@ -85,7 +106,7 @@ export default function App() {
       case 'sentiment':  return <SentimentPage articles={articles} />;
       case 'explorer':   return <ExplorerPage articles={articles} />;
       case 'chat':       return <ChatPage articles={articles} />;
-      default:           return <Dashboard articles={articles} loading={loading} lastUpdated={lastUpdated} refetch={refetch} progress={progress} totalFeeds={totalFeeds} />;
+      default:           return <DashboardPage articles={articles} loading={loading} lastUpdated={lastUpdated} refetch={refetch} progress={progress} totalFeeds={totalFeeds} />;
     }
   };
 
@@ -258,7 +279,9 @@ export default function App() {
           {/* â”€â”€ Main content */}
           <main className="main">
             <div className="page-transition">
-              {renderPage()}
+              <Suspense fallback={<PageLoader />}>
+                {renderPage()}
+              </Suspense>
             </div>
           </main>
 
@@ -281,4 +304,5 @@ export default function App() {
     </>
   );
 }
+
 
