@@ -26,32 +26,22 @@ export function ExplorerPage({ articles }) {
     if (!caseArticles || caseArticles.length === 0) return;
     setIsSummarizing(prev => ({ ...prev, [caseId]: true }));
     try {
-      let summaryText = "";
-
-      // In local development, ping Gemini directly to avoid needing Netlify CLI running locally.
-      // In production (Netlify), ping the secure Serverless Function to hide the API key.
-      if (import.meta.env.DEV && import.meta.env.VITE_GEMINI_API_KEY) {
-        const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-        const prompt = `You are a professional investigative journalist for Nepal Civic Intelligence.\nThe case is: "${caseTitle}".\nRead the following latest news headlines. Write a concise, natural, 2-3 sentence summary explaining the newest developments based on these articles.\n\nLatest News Feed:\n${caseArticles.map(a => `- ${a.title}: ${a.description}`).join('\n')}`;
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'Failed to generate');
-        summaryText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      } else {
-        const response = await fetch('/.netlify/functions/summarizer', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ caseTitle, articles: caseArticles })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Serverless function error');
-        summaryText = data.summary;
+      const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!API_KEY) {
+          throw new Error("VITE_GEMINI_API_KEY is not defined. Please check your .env.local file.");
       }
 
+      const prompt = `You are a professional investigative journalist for Nepal Civic Intelligence.\nThe case is: "${caseTitle}".\nRead the following latest news headlines. Write a concise, natural, 2-3 sentence summary explaining the newest developments based on these articles.\n\nLatest News Feed:\n${caseArticles.map(a => `- ${a.title}: ${a.description}`).join('\n')}`;
+      
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || 'Failed to generate');
+      
+      const summaryText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       setAiSummaries(prev => ({ ...prev, [caseId]: summaryText }));
     } catch (err) {
       console.error(err);
