@@ -6,7 +6,6 @@ import FmRadioWidget from './FmRadioWidget.jsx';
 import BreakingTicker from './BreakingTicker.jsx';
 import EarthquakeWidget from './EarthquakeWidget.jsx';
 import { NewArticleToast, BackendStatus } from './UIComponents.jsx';
-import PipelineOverview from './PipelineOverview.jsx';
 import CommandPalette from './CommandPalette.jsx';
 
 const DashboardPage = lazy(() =>
@@ -46,9 +45,9 @@ const NAV = [
   { id:'map',        icon:'🗺️', label:'Nepal Map'          },
   { id:'projects',   icon:'🏗️', label:'Projects Tracker'  },
   { id:'analytics',  icon:'📈', label:'Analytics'         },
-  { id:'sentiment',  icon:'🧠', label:'Mood Intelligence' },
-  { id:'explorer',   icon:'🔍', label:'Graph Explorer'    },
-  { id:'chat',       icon:'🤖', label:'AI Assistant'      },
+  { id:'sentiment',  icon:'🧠', label:'Sentiment Tracker' },
+  { id:'explorer',   icon:'🔍', label:'Policy & News Explorer'    },
+  { id:'chat',       icon:'🤖', label:'News Assistant'      },
 ];
 
 // Compact bottom-bar items (mobile)
@@ -59,7 +58,7 @@ const MOBILE_NAV = [
   { id:'projects',  icon:'🏗️', label:'Projects' },
   { id:'analytics', icon:'📈', label:'Stats'    },
   { id:'sentiment', icon:'🧠', label:'Mood'     },
-  { id:'chat',      icon:'🤖', label:'AI'       },
+  { id:'chat',      icon:'🤖', label:'News'       },
 ];
 
 function getInitialTheme() {
@@ -194,7 +193,7 @@ export default function App() {
             {n.label}
             {n.id === 'dashboard' && !loading && articles.length > 0 &&
               <span className="nav-badge blue">{articles.length}</span>}
-            {n.id === 'chat' && <span className="nav-badge green">AI</span>}
+            {n.id === 'chat' && <span className="nav-badge green">News</span>}
           </button>
         ))}
       </div>
@@ -215,11 +214,7 @@ export default function App() {
         })}
       </div>
 
-      <div className="nav-group pipeline-wrap" style={{ paddingBottom: 0 }}>
-        <div className="nav-label">Data Pipeline</div>
-        <PipelineOverview feedStatus={feedStatus} progress={progress} totalFeeds={totalFeeds}
-          loading={loading} backendOnline={backendOnline} articles={articles} />
-      </div>
+
 
       <div className="nav-group" style={{ paddingBottom: 0 }}>
         <div className="nav-label">Seismic Monitor</div>
@@ -387,3 +382,4 @@ export default function App() {
     </>
   );
 }
+

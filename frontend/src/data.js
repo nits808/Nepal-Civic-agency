@@ -801,3 +801,8 @@ export const NEPAL_FM_STATIONS = [
 
 // Note: isSourceVerified is defined once above (uses RSS_FEEDS lookup).
 // NEPAL_FM_STATIONS is defined below for the FM Radio widget.
+
+export function articleLocation(article) {
+  const parts = [article?.district, article?.province].filter(Boolean);
+  return parts.length ? parts.join(', ') : 'Nepal (inferred)';
+}

@@ -1,6 +1,6 @@
-﻿import React from 'react';
-import { CAT_COLORS, CAT_ICONS, resolveArticleImage } from './data.js';
-import { articleLocation } from './newsUtils.js';
+import React from 'react';
+import { CAT_COLORS, CAT_ICONS, resolveArticleImage, articleLocation } from './data.js';
+
 import { useModal } from './ModalContext.jsx';
 import { SkeletonCard } from './UIComponents.jsx';
 

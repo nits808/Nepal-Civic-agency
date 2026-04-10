@@ -1,7 +1,0 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-pydantic==2.10.4
-confluent-kafka==2.6.1
-transformers==4.47.1
-torch==2.5.1
-langdetect==1.0.9
