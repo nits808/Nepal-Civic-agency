@@ -19,6 +19,31 @@ export function ExplorerPage({ articles }) {
   // Scoped states for new tabs
   const [expandedCase, setExpandedCase] = useState(null);
   const [policyType, setPolicyType] = useState('domestic');
+  const [aiSummaries, setAiSummaries] = useState({});
+  const [isSummarizing, setIsSummarizing] = useState({});
+
+  const generateAiSummary = async (caseId, caseTitle, caseArticles) => {
+    if (!caseArticles || caseArticles.length === 0) return;
+    setIsSummarizing(prev => ({ ...prev, [caseId]: true }));
+    try {
+      const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY is not set.");
+      const prompt = `You are a professional investigative journalist for Nepal Civic Intelligence.\nThe case is: "${caseTitle}".\nRead the following latest news headlines. Write a concise, natural, 2-3 sentence summary explaining the newest developments based on these articles.\n\nLatest News Feed:\n${caseArticles.map(a => `- ${a.title}: ${a.description}`).join('\n')}`;
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || 'Failed to generate');
+      setAiSummaries(prev => ({ ...prev, [caseId]: data.candidates?.[0]?.content?.parts?.[0]?.text }));
+    } catch (err) {
+      console.error(err);
+      setAiSummaries(prev => ({ ...prev, [caseId]: `⚠️ AI generation failed: ${err.message}` }));
+    } finally {
+      setIsSummarizing(prev => ({ ...prev, [caseId]: false }));
+    }
+  };
 
   const govDecisions = useMemo(() => {
     const rows = articles.filter(isLikelyGovDecisionArticle).map((a) => {
@@ -279,16 +304,39 @@ export function ExplorerPage({ articles }) {
                     </div>
 
                     {caseNews.length > 0 && (
-                      <div style={{ marginTop: 24 }}>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.85rem' }}>📰 Live News Matches</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {caseNews.map(a => (
-                            <a key={a.id} href={a.link || '#'} target="_blank" rel="noopener noreferrer" 
-                               style={{ display: 'block', padding: '8px 12px', background: 'var(--bg-raised)', borderRadius: 'var(--r)', textDecoration: 'none', color: 'var(--text-1)', fontSize: '0.8rem' }}>
-                              <strong style={{ display: 'block', marginBottom: 4 }}>{a.title}</strong>
-                              <span style={{ color: 'var(--text-4)', fontSize: '0.7rem' }}>{a.source} · {a.timeAgo}</span>
-                            </a>
-                          ))}
+                      <div style={{ marginTop: 24, padding: 16, background: 'rgba(124, 58, 237, 0.05)', borderRadius: 8, border: '1px solid rgba(124, 58, 237, 0.2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            ✨ AI Live Case Analysis
+                          </h4>
+                          <button 
+                            onClick={() => generateAiSummary(c.id, c.title, caseNews)}
+                            disabled={isSummarizing[c.id]}
+                            style={{ padding: '6px 12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 'none', borderRadius: 4, color: 'white', fontSize: '0.7rem', fontWeight: 600, cursor: isSummarizing[c.id] ? 'not-allowed' : 'pointer', opacity: isSummarizing[c.id] ? 0.7 : 1 }}>
+                            {isSummarizing[c.id] ? 'Synthesizing...' : 'Generate AI Update'}
+                          </button>
+                        </div>
+                        
+                        {aiSummaries[c.id] ? (
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-1)', lineHeight: 1.6, padding: '12px', background: 'var(--bg-base)', borderRadius: 6, borderLeft: '3px solid #7c3aed' }}>
+                            {aiSummaries[c.id]}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-4)' }}>
+                            Click generate to have Gemini read the latest overlapping articles and synthesize a fresh investigation update.
+                          </div>
+                        )}
+                        
+                        <div style={{ marginTop: 16 }}>
+                          <h5 style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: 'var(--text-3)' }}>Raw Sources:</h5>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {caseNews.map(a => (
+                              <a key={a.id} href={a.link || '#'} target="_blank" rel="noopener noreferrer" 
+                                 style={{ display: 'block', textDecoration: 'none', color: 'var(--text-2)', fontSize: '0.75rem' }}>
+                                • <span style={{ textDecoration: 'underline' }}>{a.title}</span> <span style={{ color: 'var(--text-4)' }}>({a.source})</span>
+                              </a>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
