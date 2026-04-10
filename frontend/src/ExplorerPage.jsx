@@ -21,6 +21,7 @@ export function ExplorerPage({ articles }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const [tab, setTab] = useState('search');
+  const [expanded, setExpanded] = useState(false);
 
   const govDecisions = useMemo(() => {
     const rows = articles.filter(isLikelyGovDecisionArticle).map((a) => {
@@ -81,7 +82,32 @@ ORDER BY d.date DESC LIMIT 25`;
     <div className="page">
       <div className="page-title">🔗 Knowledge Graph Explorer</div>
 
-      <div className="tabs">
+      {/* ── Progressive Summary Header ───────────────────────── */}
+      <div className="explorer-summary-row" style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+        <div className="card" style={{ flex:1, padding:'12px 16px', minWidth:180, display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ fontSize:'1.8rem', opacity:0.8 }}>📊</div>
+          <div>
+            <div style={{ fontSize:'1.2rem', fontWeight:800, color:'var(--text-1)' }}>{articles.length}</div>
+            <div style={{ fontSize:'0.7rem', color:'var(--text-3)' }}>Total Indexed Articles</div>
+          </div>
+        </div>
+        <div className="card" style={{ flex:1, padding:'12px 16px', minWidth:180, display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ fontSize:'1.8rem', opacity:0.8 }}>🏛️</div>
+          <div>
+            <div style={{ fontSize:'1.2rem', fontWeight:800, color:'var(--crimson)' }}>{govDecisions.length}</div>
+            <div style={{ fontSize:'0.7rem', color:'var(--text-3)' }}>Government Signals</div>
+          </div>
+        </div>
+        <div className="card" style={{ flex:1, padding:'12px 16px', minWidth:180, display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ fontSize:'1.8rem', opacity:0.8 }}>📋</div>
+          <div>
+            <div style={{ fontSize:'1.2rem', fontWeight:800, color:'var(--text-1)' }}>{POLICIES.length}</div>
+            <div style={{ fontSize:'0.7rem', color:'var(--text-3)' }}>Tracked Policies</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="tabs" style={{ marginBottom: 20 }}>
         {[
           { id: 'search', label: '🔍 Search' },
           { id: 'decisions', label: '🏛️ Gov decisions' },
@@ -161,8 +187,9 @@ ORDER BY d.date DESC LIMIT 25`;
                 No government-flavoured items yet. Refresh feeds or try the Search tab with “cabinet”, “budget”, or “ministry”.
               </div>
             ) : (
-              govDecisions.slice(0, 40).map(({ article, impact, effectLine, posHits, negHits }) => {
-                const meta = impactStyle[impact] || impactStyle.unclear;
+              <>
+                {govDecisions.slice(0, expanded ? 40 : 5).map(({ article, impact, effectLine, posHits, negHits }) => {
+                  const meta = impactStyle[impact] || impactStyle.unclear;
                 const loc = [article.district, article.province].filter(Boolean).join(', ') || 'Nepal';
                 return (
                   <article key={article.id} className={`decision-card ${meta.className}`}>
@@ -191,7 +218,19 @@ ORDER BY d.date DESC LIMIT 25`;
                     </div>
                   </article>
                 );
-              })
+               })}
+               {govDecisions.length > 5 && (
+                 <button onClick={() => setExpanded(e => !e)} style={{
+                   width: '100%', padding: '12px', background: 'var(--bg-raised)', 
+                   border: '1px solid var(--border)', borderRadius: 'var(--r)', 
+                   color: 'var(--text-2)', fontWeight: '600', cursor: 'pointer',
+                   marginTop: '10px', transition: 'background 0.15s'
+                 }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-raised)'}>
+                   {expanded ? 'Show less' : `Show all ${govDecisions.length} government signals`}
+                 </button>
+               )}
+              </>
             )}
           </div>
         </>
@@ -238,23 +277,35 @@ ORDER BY d.date DESC LIMIT 25`;
             <input className="search-input" value={query}
               onChange={e=>setQuery(e.target.value)}
               placeholder="Type query topic to generate Cypher…"/>
-            <pre style={{
-              padding:14, background:'var(--bg-base)',
-              borderRadius:'var(--r)', fontSize:'0.75rem',
-              fontFamily:'var(--mono)', color:'#60a5fa',
-              overflowX:'auto', lineHeight:1.8,
-              border:'1px solid var(--border)', whiteSpace:'pre-wrap',
-              wordBreak:'break-word',
-            }}>{cypher}</pre>
+            <div style={{position:'relative'}}>
+              <button onClick={() => navigator.clipboard.writeText(cypher)}
+                style={{ position:'absolute', top:8, right:8, background:'rgba(255,255,255,0.1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 8px', fontSize:'0.65rem', color:'#60a5fa', cursor:'pointer' }}>
+                Copy
+              </button>
+              <pre style={{
+                padding:14, paddingTop:34, background:'var(--bg-base)',
+                borderRadius:'var(--r)', fontSize:'0.75rem',
+                fontFamily:'var(--mono)', color:'#60a5fa',
+                overflowX:'auto', lineHeight:1.8,
+                border:'1px solid var(--border)', whiteSpace:'pre-wrap',
+                wordBreak:'break-word',
+              }}>{cypher}</pre>
+            </div>
             <div className="card-head" style={{ marginTop: 14 }}><span className="card-title">🏛️ Gov decision → impact (template)</span></div>
-            <pre style={{
-              padding:14, background:'var(--bg-base)',
-              borderRadius:'var(--r)', fontSize:'0.75rem',
-              fontFamily:'var(--mono)', color:'#34d399',
-              overflowX:'auto', lineHeight:1.8,
-              border:'1px solid var(--border)', whiteSpace:'pre-wrap',
-              wordBreak:'break-word',
-            }}>{cypherGovImpact}</pre>
+            <div style={{position:'relative'}}>
+              <button onClick={() => navigator.clipboard.writeText(cypherGovImpact)}
+                style={{ position:'absolute', top:8, right:8, background:'rgba(255,255,255,0.1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 8px', fontSize:'0.65rem', color:'#34d399', cursor:'pointer' }}>
+                Copy
+              </button>
+              <pre style={{
+                padding:14, paddingTop:34, background:'var(--bg-base)',
+                borderRadius:'var(--r)', fontSize:'0.75rem',
+                fontFamily:'var(--mono)', color:'#34d399',
+                overflowX:'auto', lineHeight:1.8,
+                border:'1px solid var(--border)', whiteSpace:'pre-wrap',
+                wordBreak:'break-word',
+              }}>{cypherGovImpact}</pre>
+            </div>
           </div>
           <div className="card">
             <div className="card-head"><span className="card-title">🔗 Graph Schema</span></div>

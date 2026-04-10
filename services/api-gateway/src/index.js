@@ -50,8 +50,20 @@ redis.on('error', (err) => app.log.error({ err }, 'Redis error'));
 
 // ── Plugins ───────────────────────────────────────────────────
 await app.register(cors, {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  origin: (origin, cb) => {
+    // Allow dev origins, configurable production origin
+    const allowed = [
+      'http://localhost:5173',
+      'http://localhost:4173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean);
+    if (!origin || allowed.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`), false);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
   credentials: true,
 });
 
@@ -118,7 +130,16 @@ app.decorate('requireAdmin', async (request, reply) => {
   }
 });
 
-// ── Health Check ──────────────────────────────────────────────
+// Primary health check used by useNews.js checkBackend()
+app.get('/api/health', async () => ({
+  status: 'healthy',
+  service: 'api-gateway',
+  version: '3.0.0',
+  timestamp: new Date().toISOString(),
+  uptime: process.uptime(),
+}));
+
+// Root-level health check (internal / Docker)
 app.get('/health', async () => ({
   status: 'healthy',
   service: 'api-gateway',
@@ -230,32 +251,71 @@ app.get('/api/v1/events', async (req, reply) => {
 // Maps NCIG 2.0 frontend requests to 3.0 microservices
 
 app.get('/api/articles', async (req, reply) => {
-  // Proxy to graph service /events and transform
   const service = SERVICES.graph;
-  const url = `http://${service.host}:${service.port}/events${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`;
-  
+  const qs = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
+  const url = `http://${service.host}:${service.port}/events${qs}`;
+
+  // Helper: human-readable "X mins ago"
+  function timeAgo(dateStr) {
+    try {
+      const diff = Date.now() - new Date(dateStr).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1)  return 'just now';
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24)  return `${hrs}h ago`;
+      return `${Math.floor(hrs / 24)}d ago`;
+    } catch { return ''; }
+  }
+
+  // Province → district heuristic (fallback when graph doesn't supply district)
+  const PROVINCE_DISTRICTS = {
+    'Bagmati': 'Kathmandu', 'Gandaki': 'Kaski', 'Lumbini': 'Rupandehi',
+    'Madhesh': 'Parsa', 'Karnali': 'Surkhet', 'Sudurpashchim': 'Kailali',
+    'Province No. 1': 'Morang',
+  };
+
   try {
     const response = await fetch(url);
-    const events = await response.json();
-    
-    // Transform Event -> Legacy Article
-    const articles = events.map(e => ({
-      id: e.id,
-      title: e.title,
-      link: e.sourceUrl,
-      description: e.summary,
-      category: e.category,
-      province: e.locationName || 'National',
-      date: e.date,
-      source: e.sourceName || 'NCIG Graph',
-      feed_type: 'media',
-      image_url: e.imageUrl || null,
-      has_real_image: !!e.imageUrl,
-    }));
+    if (!response.ok) throw new Error(`Graph service HTTP ${response.status}`);
+    const data = await response.json();
+    // Graph may return array or { events: [] }
+    const events = Array.isArray(data) ? data : (data.events || []);
 
-    return { articles, total: articles.length, timestamp: new Date().toISOString() };
+    const articles = events.map(e => {
+      const province = e.locationName || e.province || 'National';
+      return {
+        id:            e.id,
+        title:         e.title,
+        link:          e.sourceUrl || e.link || '#',
+        description:   e.summary  || e.description || '',
+        category:      e.category || 'general',
+        province,
+        district:      e.district || PROVINCE_DISTRICTS[province] || province,
+        date:          e.date || e.publishedAt || new Date().toISOString(),
+        timeAgo:       timeAgo(e.date || e.publishedAt),
+        source:        e.sourceName || e.source || 'NCIG Graph',
+        feed_type:     e.feedType   || 'media',
+        image_url:     e.imageUrl   || e.image_url || null,
+        has_real_image: !!(e.imageUrl || e.image_url),
+      };
+    });
+
+    // Build feedStatus map so frontend progress bar works
+    const feedStatus = {};
+    articles.forEach(a => {
+      if (a.source) feedStatus[a.source] = { ok: true, count: (feedStatus[a.source]?.count || 0) + 1 };
+    });
+
+    return {
+      articles,
+      feedStatus,
+      total: articles.length,
+      timestamp: new Date().toISOString(),
+    };
   } catch (err) {
-    return proxyToService('graph', '/events', req, reply);
+    app.log.warn({ err }, '/api/articles: graph service unavailable, returning empty set');
+    return { articles: [], feedStatus: {}, total: 0, timestamp: new Date().toISOString() };
   }
 });
 

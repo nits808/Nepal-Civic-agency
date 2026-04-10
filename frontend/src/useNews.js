@@ -1,4 +1,4 @@
-﻿// ---------------------------------------------------------------
+// ---------------------------------------------------------------
 // NCIG Frontend — useNews Hook v4.0
 // Primary: Backend REST API + WebSocket real-time push
 // Fallback: Client-side RSS via CORS proxies (if backend offline)
@@ -36,13 +36,19 @@ function writeCache(articles, feedStatus, source = 'backend') {
 }
 
 // -- Check if backend is available ---------------------------
+// BUG-03 FIX: Capture timer ID and clear in both success and error paths
+// so the abort callback cannot fire after the function has already resolved.
 async function checkBackend() {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2000);
   try {
-    const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 2000);
     const r = await fetch(`${BACKEND_URL}/api/health`, { signal: ctrl.signal });
+    clearTimeout(timer);
     return r.ok;
-  } catch { return false; }
+  } catch {
+    clearTimeout(timer);
+    return false;
+  }
 }
 
 // -- Fetch from backend ---------------------------------------
@@ -57,17 +63,22 @@ async function fetchFromBackend() {
 }
 
 // -- Fallback: client-side RSS fetch -------------------------
+// BUG-03 FIX: Capture + clear timer in each proxy attempt
 async function fetchOneFeed(feed) {
   for (const proxy of CORS_PROXIES) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      const ctrl = new AbortController();
-      setTimeout(() => ctrl.abort(), TIMEOUT_MS);
       const r = await fetch(proxy + encodeURIComponent(feed.url), { signal: ctrl.signal });
+      clearTimeout(timer);
       if (!r.ok) continue;
       const text = await r.text();
       if (!text || text.length < 50) continue;
       return { ok: true, items: parseRSS(text, feed) };
-    } catch { continue; }
+    } catch {
+      clearTimeout(timer);
+      continue;
+    }
   }
   return { ok: false, items: [] };
 }
@@ -108,19 +119,24 @@ function extractMetaImage(html) {
   }
 }
 
+// BUG-03 FIX: Capture + clear timer in each proxy attempt
 async function fetchOgImage(url) {
   if (!url) return null;
   for (const proxy of CORS_PROXIES) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      const ctrl = new AbortController();
-      setTimeout(() => ctrl.abort(), TIMEOUT_MS);
       const r = await fetch(proxy + encodeURIComponent(url), { signal: ctrl.signal });
+      clearTimeout(timer);
       if (!r.ok) continue;
       const text = await r.text();
       if (!text || text.length < 200) continue;
       const img = extractMetaImage(text);
       if (img && isValidImageUrl(img)) return img;
-    } catch { continue; }
+    } catch {
+      clearTimeout(timer);
+      continue;
+    }
   }
   return null;
 }

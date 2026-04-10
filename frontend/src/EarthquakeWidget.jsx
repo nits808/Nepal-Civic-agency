@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // USGS Earthquake API — free, no key needed
 const USGS_URL = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minmagnitude=3.5&latitude=28.3949&longitude=84.1240&maxradiuskm=700&limit=5&orderby=time';
@@ -23,8 +23,11 @@ export default function EarthquakeWidget() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [lastFetch, setLastFetch] = useState(null);
+  // BUG-05 FIX: Track mount state so async callbacks never update
+  // state on an unmounted component (stale state / React 19 warning).
+  const mountedRef = useRef(true);
 
-  const fetchQuakes = async () => {
+  const fetchQuakes = useCallback(async () => {
     try {
       const r = await fetch(USGS_URL);
       const data = await r.json();
@@ -38,20 +41,25 @@ export default function EarthquakeWidget() {
         lat: f.geometry.coordinates[1],
         lng: f.geometry.coordinates[0],
       }));
+      if (!mountedRef.current) return;
       setQuakes(list);
       setLastFetch(new Date());
     } catch (e) {
       console.warn('[EarthquakeWidget] fetch error:', e.message);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchQuakes();
     const interval = setInterval(fetchQuakes, 5 * 60 * 1000); // refresh every 5 min
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, [fetchQuakes]);
 
   const top = quakes[0];
   const hasAlert = top && top.mag >= 5.0;

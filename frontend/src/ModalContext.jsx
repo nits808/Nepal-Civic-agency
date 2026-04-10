@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const ModalContext = createContext();
 
@@ -15,6 +15,13 @@ export function ModalProvider({ children }) {
     setSelectedArticle(null);
     document.body.style.overflow = '';
   };
+
+  // BUG-04 FIX: Always unlock scroll on unmount.
+  // Without this, navigating away while a modal is open permanently
+  // scroll-locks the page since closeModal is never called.
+  useEffect(() => {
+    return () => { document.body.style.overflow = ''; };
+  }, []);
 
   return (
     <ModalContext.Provider value={{ selectedArticle, openModal, closeModal }}>
@@ -36,7 +43,7 @@ export function ModalProvider({ children }) {
               <div className="article-modal-meta">
                 <span>📰 {selectedArticle.source}</span>
                 <span>📅 {selectedArticle.timeAgo}</span>
-                <span>📍 {selectedArticle.district}, {selectedArticle.province}</span>
+                <span>📍 {[selectedArticle.district, selectedArticle.province].filter(Boolean).join(', ') || 'Nepal'}</span>
               </div>
               <p className="article-modal-desc">{selectedArticle.description}</p>
               

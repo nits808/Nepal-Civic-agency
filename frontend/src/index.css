@@ -348,6 +348,55 @@ body::before {
   grid-template-areas: "sidebar topbar" "sidebar main";
   height: 100vh;
   overflow: hidden;
+  transition: grid-template-columns 280ms var(--ease);
+}
+
+/* Collapsed: icon-only 52 px rail */
+.shell.sidebar-collapsed {
+  grid-template-columns: 52px 1fr;
+}
+.shell.sidebar-collapsed .sidebar {
+  width: 52px;
+  overflow: hidden;
+}
+.shell.sidebar-collapsed .nav-label,
+.shell.sidebar-collapsed .logo-text,
+.shell.sidebar-collapsed .logo-sub,
+.shell.sidebar-collapsed .sidebar-footer,
+.shell.sidebar-collapsed .source-row,
+.shell.sidebar-collapsed .type-pill,
+.shell.sidebar-collapsed .backend-status-pill span:last-child,
+.shell.sidebar-collapsed .pipeline-wrap,
+.shell.sidebar-collapsed .eq-widget,
+.shell.sidebar-collapsed .nav-badge,
+.shell.sidebar-collapsed .nav-btn > *:not(.nav-icon) {
+  display: none !important;
+}
+.shell.sidebar-collapsed .nav-btn {
+  justify-content: center;
+  padding: 10px 6px;
+  gap: 0;
+}
+.shell.sidebar-collapsed .nav-icon {
+  font-size: 1.2rem;
+  width: auto;
+}
+.shell.sidebar-collapsed .sidebar-logo {
+  padding: 14px 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.shell.sidebar-collapsed .logo-flag {
+  height: 28px;
+  margin-bottom: 0;
+}
+.shell.sidebar-collapsed .nav-group {
+  padding: 6px 4px 0;
+}
+.shell.sidebar-collapsed .backend-status-pill {
+  justify-content: center;
+  padding: 6px;
 }
 
 /* ── Sidebar ───────────────────────────────────────────────── */
@@ -360,6 +409,55 @@ body::before {
   overflow-y: auto;
   overflow-x: hidden;
   box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+  transition: width 280ms var(--ease);
+}
+
+/* ── Sidebar toggle button (in topbar) ───────────────────────── */
+.sidebar-toggle-btn {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text-3);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all var(--fast);
+  flex-shrink: 0;
+}
+.sidebar-toggle-btn:hover {
+  background: rgba(220,20,60,0.06);
+  color: var(--crimson);
+  border-color: rgba(220,20,60,0.3);
+}
+
+/* ── Command Palette trigger button (topbar ⌘K) ─────────────── */
+.cmd-palette-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text-3);
+  font-size: 0.72rem;
+  font-family: var(--font);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--fast);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.cmd-palette-btn:hover {
+  background: rgba(220,20,60,0.06);
+  color: var(--text-1);
+  border-color: rgba(220,20,60,0.3);
+}
+.cmd-palette-btn .cmd-kbd {
+  font-size: 0.6rem; font-weight: 700;
+  padding: 1px 5px; border-radius: 4px;
+  background: var(--border);
+  color: var(--text-4);
+  letter-spacing: 0.04em;
 }
 
 .sidebar-logo {
@@ -1500,8 +1598,10 @@ body::before {
 .map-layout {
   display: grid;
   grid-template-columns: 1fr 320px;
+  grid-template-rows: 1fr;
   gap: 16px;
-  min-height: 70vh;
+  height: calc(100vh - 160px);
+  min-height: 520px;
 }
 .map-panel {
   background: var(--bg-surface);
@@ -1512,19 +1612,26 @@ body::before {
   box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
-  min-height: 420px;
+  height: 100%; /* allow Leaflet child to get a pixel size */
 }
 .map-canvas {
   flex: 1;
   position: relative;
   overflow: hidden;
   min-height: 320px;
+  height: 100%;
+}
+/* Leaflet map div must have explicit height */
+.map-panel .leaflet-container {
+  height: 100% !important;
+  min-height: 480px;
 }
 .map-side {
   display: flex;
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  height: 100%;
   min-height: 420px;
 }
 @media (max-width:640px) {
@@ -2301,4 +2408,435 @@ body::before {
 .feed-src-badge {
   display: inline-flex; align-items: center; gap: 2px;
   font-size: 0.65rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE LAYOUT
+   Breakpoint: ≤ 768px — collapse sidebar, show bottom nav bar
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Mobile nav — hidden on desktop ─────────────────────────── */
+.mobile-nav { display: none; }
+
+@media (max-width: 768px) {
+  /* ── Shell: single-column, topbar only at top ────────────── */
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--bar-h) 1fr;
+    grid-template-areas:
+      "topbar"
+      "main";
+  }
+
+  /* ── Sidebar: hidden on mobile — replaced by .mobile-drawer */
+  .sidebar { display: none !important; }
+
+  /* ── Shell never needs sidebar-collapsed logic on mobile */
+  .shell.sidebar-collapsed { grid-template-columns: 1fr; }
+
+  /* ── Main: add bottom padding so content clears the nav bar  */
+  .main { padding-bottom: 68px; }
+
+  /* ── Topbar: show hamburger, hide desktop controls ─────────── */
+  .topbar { padding: 0 10px; gap: 6px; }
+  .topbar-search { max-width: 160px; }
+  .topbar-search input { font-size: 0.75rem; padding: 7px 10px 7px 30px; }
+  .topbar-pill   { display: none; }
+  .live-pill     { font-size: 0.62rem; padding: 4px 8px; }
+  /* Utility visibility helpers */
+  .desktop-only  { display: none !important; }
+  .mobile-only   { display: flex  !important; }
+
+  /* ── Mobile bottom nav bar ───────────────────────────────── */
+  .mobile-nav {
+    display: block;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1000;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.10);
+    /* Safe area for iPhone home indicator */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mobile-nav-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 2px;
+    padding: 6px 8px;
+    /* Hide scrollbar but keep scrollability */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .mobile-nav-scroll::-webkit-scrollbar { display: none; }
+
+  .mobile-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex: 0 0 auto;
+    min-width: 58px;
+    padding: 6px 8px;
+    border: none;
+    background: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    color: var(--text-3);
+    font-family: var(--font);
+  }
+
+  .mobile-nav-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-1);
+  }
+
+  .mobile-nav-btn.active {
+    background: rgba(220,20,60,0.08);
+    color: var(--crimson);
+  }
+
+  .mobile-nav-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+    display: block;
+  }
+
+  .mobile-nav-label {
+    font-size: 0.58rem;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Page padding tighter on mobile ─────────────────────── */
+  .page { padding: 14px 14px 24px; }
+
+  /* ── Stat cards: 2 columns on phone ─────────────────────── */
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  /* ── Collapse 2-col grids to 1 col ──────────────────────── */
+  .grid-2, .grid-2-1 { grid-template-columns: 1fr; }
+  .grid-3           { grid-template-columns: 1fr; }
+
+  /* ── Map layout: stack vertically on mobile ──────────────── */
+  .map-layout {
+    grid-template-columns: 1fr;
+  }
+  .map-side { min-height: auto; }
+
+  /* ── Image card grid: 1 column on small phones ───────────── */
+  .img-card-grid {
+    grid-template-columns: 1fr;
+    padding: 8px;
+    gap: 12px;
+  }
+
+  /* ── Hero carousel slides: full width ───────────────────── */
+  .carousel-slide { flex: 0 0 calc(100% - 16px); }
+
+  /* ── Feed compact list: no horizontal overflow ────────────  */
+  .feed { max-height: none; }
+
+  /* ── Source manager: single column ──────────────────────── */
+  .source-grid { grid-template-columns: 1fr; }
+
+  /* ── Tab bar: allow scroll ───────────────────────────────── */
+  .tabs { flex-wrap: nowrap; overflow-x: auto; width: 100%; }
+
+  /* ── Breaking ticker: shorten label on mobile ────────────── */
+  .breaking-label { padding: 0 8px; font-size: 0.62rem; letter-spacing: 0.06em; }
+  .ticker-title   { font-size: 0.72rem; }
+
+  /* ── FM widget: smaller on mobile ───────────────────────── */
+  .fm-widget { right: 10px; bottom: 74px; }
+}
+
+/* ── Extra small phones (< 400px) ─────────────────────────────── */
+@media (max-width: 400px) {
+  .topbar-search { display: none; }
+  .mobile-nav-btn { min-width: 50px; padding: 6px 4px; }
+  .mobile-nav-label { font-size: 0.53rem; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Tablet (769px – 1024px): sidebar visible, narrower ────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root { --sidebar-w: 210px; }
+  .mobile-nav { display: none; }
+  .nav-btn { font-size: 0.76rem; padding: 8px 10px; }
+  /* Ensure mobile-only elements stay hidden on tablet/desktop */
+  .mobile-only { display: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESKTOP: mobile-only elements hidden by default
+   ═══════════════════════════════════════════════════════════════ */
+.mobile-only  { display: none; }
+.desktop-only { display: flex; }   /* flex so toggle-btn aligns correctly */
+
+/* ═══════════════════════════════════════════════════════════════
+   HAMBURGER BUTTON (mobile topbar)
+   ═══════════════════════════════════════════════════════════════ */
+.hamburger-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 38px; height: 38px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--fast), border-color var(--fast);
+  padding: 8px;
+}
+.hamburger-btn:hover {
+  background: rgba(220,20,60,0.08);
+  border-color: rgba(220,20,60,0.3);
+}
+.hamburger-btn:hover .hamburger-bar { background: var(--crimson); }
+
+.hamburger-bar {
+  display: block;
+  width: 18px; height: 2px;
+  background: var(--text-2);
+  border-radius: 2px;
+  transition: background var(--fast);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE DRAWER — independent off-canvas nav
+   Opened by hamburger, closes on backdrop click or nav link click
+   ═══════════════════════════════════════════════════════════════ */
+.mobile-drawer {
+  display: none;            /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  .mobile-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: min(280px, 80vw);
+    z-index: 3000;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    box-shadow: 6px 0 28px rgba(0,0,0,0.25);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-drawer.mobile-drawer-open {
+    transform: translateX(0);
+  }
+
+  /* Backdrop behind open drawer */
+  .mobile-drawer-backdrop {
+    position: fixed; inset: 0; z-index: 2999;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(3px);
+    animation: fade-in 0.2s ease-out;
+  }
+
+  /* Close (✕) button pinned to top-right inside drawer */
+  .mobile-drawer-close {
+    position: sticky;
+    top: 0; right: 0;
+    align-self: flex-end;
+    margin: 12px 12px 0 0;
+    flex-shrink: 0;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    font-size: 0.9rem;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all var(--fast);
+    z-index: 1;
+  }
+  .mobile-drawer-close:hover {
+    background: rgba(220,20,60,0.1);
+    color: var(--crimson);
+    border-color: rgba(220,20,60,0.3);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE PERSISTENT TOPBAR (.mobile-topbar)
+   Hidden on desktop; always visible on ≤ 768px
+   ═══════════════════════════════════════════════════════════════ */
+.mobile-topbar {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    z-index: 2500;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 0 12px;
+  }
+
+  .mobile-topbar-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-1);
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+
+  /* Push all page content below the fixed mobile topbar */
+  .front-mobile-wrap,
+  .shell {
+    padding-top: 52px;
+  }
+
+  /* On inner pages, the desktop .topbar is hidden — mobile header handles it */
+  .topbar { display: none !important; }
+}
+
+/* .front-mobile-wrap: wrapper for FrontPage on mobile
+   adds top + bottom padding so content clears the fixed bars */
+.front-mobile-wrap {
+  /* On desktop — normal flow, no padding needed */
+}
+
+@media (max-width: 768px) {
+  .front-mobile-wrap {
+    padding-top: 52px;   /* below mobile-topbar */
+    padding-bottom: 68px; /* above mobile bottom nav */
+    min-height: 100vh;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL COMMAND PALETTE (Ctrl+K)
+   ═══════════════════════════════════════════════════════════════ */
+
+.cmd-backdrop {
+  position: fixed; inset: 0; z-index: 999998;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  animation: fade-in 0.15s ease-out;
+}
+
+.cmd-palette {
+  position: fixed; z-index: 999999;
+  top: 15vh; left: 50%; width: 90%; max-width: 600px;
+  transform: translateX(-50%);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translate(-50%, -20px) scale(0.98); }
+  to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.cmd-input-row {
+  display: flex; align-items: center; padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  position: relative;
+}
+
+.cmd-search-ico {
+  font-size: 1.1rem; color: var(--text-3); flex-shrink: 0;
+}
+
+.cmd-input {
+  flex: 1; min-width: 0; padding: 18px 14px;
+  border: none; background: transparent;
+  font-size: 1.1rem; color: var(--text-1); font-family: var(--font);
+  outline: none;
+}
+.cmd-input::placeholder { color: var(--text-4); font-weight: 400; }
+
+.cmd-clear-btn {
+  background: var(--bg-raised); border: none; border-radius: 50%;
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-3); font-size: 0.7rem; cursor: pointer; transition: all 0.15s;
+  margin-right: 12px;
+}
+.cmd-clear-btn:hover { background: var(--bg-hover); color: var(--text-1); }
+
+.cmd-esc-hint {
+  font-size: 0.65rem; font-weight: 700; color: var(--text-4);
+  padding: 3px 6px; border-radius: 4px; background: var(--bg-raised);
+  border: 1px solid var(--border);
+}
+
+.cmd-results {
+  max-height: 380px; overflow-y: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+.cmd-empty {
+  padding: 40px 20px; text-align: center; color: var(--text-3);
+  font-size: 0.85rem; font-weight: 500;
+}
+.cmd-empty-ico { font-size: 2rem; margin-bottom: 12px; opacity: 0.5; }
+
+.cmd-item {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; text-align: left; padding: 10px 14px;
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  cursor: pointer; transition: background 0.1s;
+}
+.cmd-item-active { background: var(--bg-raised); border-color: var(--border); }
+.cmd-item:hover { background: var(--bg-hover); }
+
+.cmd-item-icon {
+  font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+  width: 28px; flex-shrink: 0;
+}
+.cmd-item-active .cmd-item-icon { transform: scale(1.1); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+.cmd-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cmd-item-title {
+  font-size: 0.85rem; font-weight: 600; color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cmd-item-sub {
+  font-size: 0.7rem; color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.cmd-item-tag {
+  font-size: 0.62rem; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+  background: var(--bg-raised); color: var(--text-4); border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.cmd-footer {
+  display: flex; align-items: center; gap: 16px; padding: 10px 16px;
+  background: var(--bg-raised); border-top: 1px solid var(--border);
+  font-size: 0.65rem; color: var(--text-4); font-weight: 500;
+}
+.cmd-footer kbd {
+  font-family: var(--mono); font-weight: 700; background: var(--bg-surface);
+  border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px;
+  margin-right: 4px; box-shadow: 0 1px 1px rgba(0,0,0,0.05); color: var(--text-2);
 }

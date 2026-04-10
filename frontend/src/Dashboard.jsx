@@ -1,8 +1,9 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CAT_COLORS, CAT_ICONS, PROVINCES, resolveArticleImage, isSourceVerified } from './data.js';
 import { useModal } from './ModalContext.jsx';
 import { SkeletonFeedItem } from './UIComponents.jsx';
+import { articleLocation } from './newsUtils.js'; // BUG-01 FIX: removed duplicate, use canonical version
 
 // â”€â”€ Shared sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -14,10 +15,7 @@ function formatNewsDate(isoDate) {
   return d.toLocaleDateString('en-NP', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
-export function articleLocation(a) {
-  const parts = [a.district, a.province].filter(Boolean);
-  return parts.length ? parts.join(', ') : 'Nepal (inferred)';
-}
+
 
 export function StatCard({ icon, value, label, sub, color }) {
   return (
