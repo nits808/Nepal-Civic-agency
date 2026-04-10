@@ -200,6 +200,22 @@ export const RSS_FEEDS = [
   // TIER 4 — GOVERNMENT & INTERNATIONAL
   // ══════════════════════════════════════════════════
 
+  { id:'supremecourt', name:'Supreme Court of Nepal',  tier:4, type:'govt', verified: true,
+    url:'https://news.google.com/rss/search?q=Nepal+Supreme+Court+judgment+order+SC&hl=en-NP&gl=NP&ceid=NP:en',
+    website:'https://supremecourt.gov.np', province:'Bagmati' },
+
+  { id:'lawcommission',name:'Nepal Law Commission',    tier:4, type:'govt', verified: true,
+    url:'https://news.google.com/rss/search?q=Nepal+Law+Commission+act+constitution&hl=en-NP&gl=NP&ceid=NP:en',
+    website:'https://lawcommission.gov.np', province:'Bagmati' },
+
+  { id:'nhrc',         name:'National Human Rights',   tier:4, type:'govt', verified: true,
+    url:'https://news.google.com/rss/search?q=National+Human+Rights+Commission+Nepal+NHRC+bulletin&hl=en-NP&gl=NP&ceid=NP:en',
+    website:'https://nhrcnepal.org', province:'Bagmati' },
+
+  { id:'casemine',     name:'CaseMine Analysis',       tier:4, type:'intl', verified: true,
+    url:'https://news.google.com/rss/search?q=CaseMine+Nepal+Supreme+Court+precedent&hl=en-NP&gl=NP&ceid=NP:en',
+    website:'https://casemine.com', province:'International' },
+
   { id:'gorkhapatra',  name:'Gorkhapatra Daily',       tier:4, type:'govt', verified: true,
     url:'https://gorkhapatraonline.com/feed',
     website:'https://gorkhapatraonline.com', province:'Bagmati' },

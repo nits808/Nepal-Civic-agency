@@ -19,37 +19,6 @@ export function ExplorerPage({ articles }) {
   // Scoped states for new tabs
   const [expandedCase, setExpandedCase] = useState(null);
   const [policyType, setPolicyType] = useState('domestic');
-  const [aiSummaries, setAiSummaries] = useState({});
-  const [isSummarizing, setIsSummarizing] = useState({});
-
-  const generateAiSummary = async (caseId, caseTitle, caseArticles) => {
-    if (!caseArticles || caseArticles.length === 0) return;
-    setIsSummarizing(prev => ({ ...prev, [caseId]: true }));
-    try {
-      const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!API_KEY) {
-          throw new Error("VITE_GEMINI_API_KEY is not defined. Please check your .env.local file.");
-      }
-
-      const prompt = `You are a professional investigative journalist for Nepal Civic Intelligence.\nThe case is: "${caseTitle}".\nRead the following latest news headlines. Write a concise, natural, 2-3 sentence summary explaining the newest developments based on these articles.\n\nLatest News Feed:\n${caseArticles.map(a => `- ${a.title}: ${a.description}`).join('\n')}`;
-      
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message || 'Failed to generate');
-      
-      const summaryText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      setAiSummaries(prev => ({ ...prev, [caseId]: summaryText }));
-    } catch (err) {
-      console.error(err);
-      setAiSummaries(prev => ({ ...prev, [caseId]: `⚠️ AI generation failed: ${err.message}` }));
-    } finally {
-      setIsSummarizing(prev => ({ ...prev, [caseId]: false }));
-    }
-  };
 
   const govDecisions = useMemo(() => {
     const rows = articles.filter(isLikelyGovDecisionArticle).map((a) => {
@@ -257,101 +226,136 @@ export function ExplorerPage({ articles }) {
       )}
 
       {/* ──────────────────────────────────────────────────────────
-          TAB: INVESTIGATED CASES
+          TAB: INVESTIGATED CASES (MARSHALL PROJECT STYLE)
           ────────────────────────────────────────────────────────── */}
       {tab === 'cases' && (
-        <div className="cases-grid">
+        <div className="cases-grid" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {EXPLORER_CASES.map(c => {
             const isOpen = expandedCase === c.id;
             
-            // Find live news mapping to this case
+            // Live news mapping
             const caseNews = articles.filter(a => {
               const lowerT = a.title.toLowerCase();
               const lowerD = (a.description || '').toLowerCase();
               return c.keywords.some(kw => lowerT.includes(kw) || lowerD.includes(kw));
-            }).slice(0, 5);
+            }).slice(0, 8);
 
             return (
-              <div key={c.id} className="card" style={{ borderLeft: '4px solid #b91c1c', cursor: 'pointer' }} onClick={() => setExpandedCase(isOpen ? null : c.id)}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 6px 0', color: 'var(--text-1)' }}>{c.title}</h3>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-3)', lineHeight: 1.5 }}>
-                      {c.summary}
-                    </p>
+              <div key={c.id} style={{ 
+                background: '#0a0a0a', 
+                color: 'white', 
+                borderRadius: 'var(--r)', 
+                overflow: 'hidden',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                border: '1px solid #222'
+              }}>
+                <div 
+                  onClick={() => setExpandedCase(isOpen ? null : c.id)}
+                  style={{ 
+                    padding: '40px 30px', 
+                    cursor: 'pointer',
+                    background: 'linear-gradient(180deg, #111 0%, #000 100%)',
+                    borderBottom: isOpen ? '1px solid #333' : 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    {c.keywords.slice(0, 3).map(kw => (
+                      <span key={kw} style={{ 
+                        fontSize:'0.65rem', textTransform: 'uppercase', letterSpacing: '1px',
+                        background:'#222', color:'#ccc', padding:'4px 10px', borderRadius:2 
+                      }}>
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                  
+                  <h2 style={{ 
+                    margin: '0 0 16px 0', 
+                    fontSize: '2.4rem', 
+                    fontWeight: 900, 
+                    lineHeight: 1.1,
+                    fontFamily: '"Georgia", serif',
+                    color: '#fff'
+                  }}>
+                    {c.title}
+                  </h2>
+                  
+                  <p style={{ 
+                    margin: 0, 
+                    fontSize: '1.1rem', 
+                    color: '#aaa', 
+                    lineHeight: 1.6,
+                    fontFamily: '"Georgia", serif',
+                    maxWidth: '800px'
+                  }}>
+                    {c.summary}
+                  </p>
+                  
+                  <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      {isOpen ? 'Close Investigation ✖' : 'Read The Investigation ➔'}
+                    </span>
+                    {caseNews.length > 0 && !isOpen && (
+                      <span style={{ fontSize:'0.75rem', background:'#dc2626', color:'white', padding:'4px 12px', borderRadius:2, fontWeight: 'bold' }}>
+                        {caseNews.length} LIVE UPDATES
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {c.keywords.slice(0, 4).map(kw => (
-                    <span key={kw} style={{ fontSize:'0.65rem', background:'var(--bg-raised)', color:'var(--text-4)', padding:'2px 8px', borderRadius:10, border:'1px solid var(--border)' }}>
-                      #{kw}
-                    </span>
-                  ))}
-                  {caseNews.length > 0 && (
-                    <span style={{ fontSize:'0.65rem', background:'rgba(220, 20, 60, 0.1)', color:'var(--crimson)', padding:'2px 8px', borderRadius:10, border:'1px solid rgba(220,20,60,0.3)', fontWeight: 'bold' }}>
-                      🔥 {caseNews.length} live updates
-                    </span>
-                  )}
-                </div>
-
                 {isOpen && (
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)', animation: 'msgIn 0.2s ease' }} onClick={e => e.stopPropagation()}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '0.85rem' }}>⏳ Case Timeline</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ background: '#fff', color: '#111', padding: '40px 30px' }}>
+                    
+                    <h3 style={{ margin: '0 0 30px 0', fontSize: '1.4rem', textTransform:'uppercase', borderBottom: '2px solid #111', paddingBottom: 10 }}>
+                      The Story So Far
+                    </h3>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, paddingLeft: 16, borderLeft: '4px solid #eaeaea' }}>
                       {c.timeline.map((event, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                          <span style={{ fontWeight: 800, color: '#3b82f6', fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: 4, flexShrink: 0 }}>
+                        <div key={idx} style={{ position: 'relative' }}>
+                          <div style={{ position: 'absolute', left: -26, top: 4, width: 12, height: 12, background: '#111', borderRadius: '50%' }}></div>
+                          <div style={{ fontWeight: 800, color: '#dc2626', fontSize: '0.9rem', marginBottom: 4 }}>
                             {event.date}
-                          </span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>{event.text}</span>
+                          </div>
+                          <div style={{ fontSize: '1.05rem', color: '#333', lineHeight: 1.6 }}>
+                            {event.text}
+                          </div>
                         </div>
                       ))}
                     </div>
 
                     {caseNews.length > 0 && (
-                      <div style={{ marginTop: 24, padding: 16, background: 'rgba(124, 58, 237, 0.05)', borderRadius: 8, border: '1px solid rgba(124, 58, 237, 0.2)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                          <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            ✨ AI Live Case Analysis
-                          </h4>
-                          <button 
-                            onClick={() => generateAiSummary(c.id, c.title, caseNews)}
-                            disabled={isSummarizing[c.id]}
-                            style={{ padding: '6px 12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 'none', borderRadius: 4, color: 'white', fontSize: '0.7rem', fontWeight: 600, cursor: isSummarizing[c.id] ? 'not-allowed' : 'pointer', opacity: isSummarizing[c.id] ? 0.7 : 1 }}>
-                            {isSummarizing[c.id] ? 'Synthesizing...' : 'Generate AI Update'}
-                          </button>
-                        </div>
-                        
-                        {aiSummaries[c.id] ? (
-                          <div style={{ fontSize: '0.85rem', color: 'var(--text-1)', lineHeight: 1.6, padding: '12px', background: 'var(--bg-base)', borderRadius: 6, borderLeft: '3px solid #7c3aed' }}>
-                            {aiSummaries[c.id]}
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-4)' }}>
-                            Click generate to have Gemini read the latest overlapping articles and synthesize a fresh investigation update.
-                          </div>
-                        )}
-                        
-                        <div style={{ marginTop: 16 }}>
-                          <h5 style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: 'var(--text-3)' }}>Raw Sources:</h5>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {caseNews.map(a => (
-                              <a key={a.id} href={a.link || '#'} target="_blank" rel="noopener noreferrer" 
-                                 style={{ display: 'block', textDecoration: 'none', color: 'var(--text-2)', fontSize: '0.75rem' }}>
-                                • <span style={{ textDecoration: 'underline' }}>{a.title}</span> <span style={{ color: 'var(--text-4)' }}>({a.source})</span>
-                              </a>
-                            ))}
-                          </div>
+                      <div style={{ marginTop: 60 }}>
+                        <h3 style={{ margin: '0 0 20px 0', fontSize: '1.4rem', textTransform:'uppercase', borderBottom: '2px solid #111', paddingBottom: 10 }}>
+                          Live Court & Commission Bulletins
+                        </h3>
+                        <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: 20 }}>
+                          Automated ingestion of raw documents and news feeds referencing this investigation.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                          {caseNews.map(a => (
+                            <a key={a.id} href={a.link || '#'} target="_blank" rel="noopener noreferrer" 
+                               style={{ 
+                                 display: 'block', padding: '16px 20px', 
+                                 background: '#f9f9f9', borderLeft: '4px solid #111', 
+                                 textDecoration: 'none', color: '#111', transition: 'all 0.2s' 
+                               }}>
+                              <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: 8, fontFamily: '"Georgia", serif' }}>
+                                {a.title}
+                              </strong>
+                              <span style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                                {a.source}
+                              </span>
+                              <span style={{ color: '#888', fontSize: '0.8rem', marginLeft: 8 }}>
+                                • {a.timeAgo}
+                              </span>
+                            </a>
+                          ))}
                         </div>
                       </div>
                     )}
                   </div>
                 )}
-                
-                <div style={{ fontSize:'0.65rem', color:'var(--text-4)', marginTop:12, textAlign:'right' }}>
-                  {isOpen ? 'Close' : 'View full timeline'}
-                </div>
               </div>
             );
           })}
