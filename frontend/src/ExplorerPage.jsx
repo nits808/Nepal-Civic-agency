@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { isLikelyGovDecisionArticle, scorePublicImpact } from './data.js';
 import { FeedItem } from './Dashboard.jsx';
+import { EXPLORER_CASES, EXPLORER_POLICIES, EXPLORER_HISTORY } from './explorerData.js';
 
 function formatShortDate(isoDate) {
   if (!isoDate) return '';
@@ -9,19 +10,15 @@ function formatShortDate(isoDate) {
   return d.toLocaleDateString('en-NP', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-const POLICIES = [
-  { title:'Digital Nepal Framework 2026-2030', ministry:'MoICT', status:'implementing', progress:35 },
-  { title:'National Health Insurance Expansion', ministry:'MoHP', status:'approved', progress:60 },
-  { title:'Clean Energy Act 2026', ministry:'MoEWRI', status:'in committee', progress:20 },
-  { title:'Agricultural Modernization Plan', ministry:'MoALD', status:'implementing', progress:45 },
-  { title:'Infrastructure Development Fund', ministry:'MoF', status:'announced', progress:10 },
-];
-
 export function ExplorerPage({ articles }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const [tab, setTab] = useState('search');
   const [expanded, setExpanded] = useState(false);
+  
+  // Scoped states for new tabs
+  const [expandedCase, setExpandedCase] = useState(null);
+  const [policyType, setPolicyType] = useState('domestic');
 
   const govDecisions = useMemo(() => {
     const rows = articles.filter(isLikelyGovDecisionArticle).map((a) => {
@@ -46,15 +43,14 @@ export function ExplorerPage({ articles }) {
   const search = () => {
     if (!query.trim()) return;
     const q = query.toLowerCase();
-    // strip emoji prefix if user clicked a sample chip
     const cleanQ = q.replace(/^[^a-z]+/,'').trim();
     let matched = articles.filter(a =>
-      a.title.toLowerCase().includes(cleanQ) ||
-      a.description?.toLowerCase().includes(cleanQ) ||
-      a.category.toLowerCase().includes(cleanQ) ||
-      a.province?.toLowerCase().includes(cleanQ) ||
-      a.district?.toLowerCase().includes(cleanQ) ||
-      a.source?.toLowerCase().includes(cleanQ)
+      (a.title && a.title.toLowerCase().includes(cleanQ)) ||
+      (a.description && a.description.toLowerCase().includes(cleanQ)) ||
+      (a.category && a.category.toLowerCase().includes(cleanQ)) ||
+      (a.province && a.province.toLowerCase().includes(cleanQ)) ||
+      (a.district && a.district.toLowerCase().includes(cleanQ)) ||
+      (a.source && a.source.toLowerCase().includes(cleanQ))
     );
     setResults({ query, articles: matched.slice(0, 30), total: matched.length });
   };
@@ -68,19 +64,11 @@ export function ExplorerPage({ articles }) {
     '⚖️ cabinet minister policy',
   ];
 
-  const cypher = query
-    ? `MATCH (e:Event)\nWHERE toLower(e.title) CONTAINS '${query.toLowerCase()}'\n   OR toLower(e.content) CONTAINS '${query.toLowerCase()}'\nRETURN e.title, e.category, e.province, e.date\nORDER BY e.date DESC LIMIT 30`
-    : '// Enter a search query above to generate a Cypher query';
-
-  const cypherGovImpact = `// Example: government decisions → public impact (graph model)
-MATCH (d:GovernmentDecision)-[r:AFFECTS]->(g:PublicGroup)
-WHERE r.polarity IN ['positive','negative','mixed']
-RETURN d.title, d.date, r.polarity, g.segment
-ORDER BY d.date DESC LIMIT 25`;
+  const totalPolicies = EXPLORER_POLICIES.domestic.length + EXPLORER_POLICIES.foreign.length;
 
   return (
     <div className="page">
-      <div className="page-title">🔗 Knowledge Graph Explorer</div>
+      <div className="page-title">🔗 Policy & News Explorer</div>
 
       {/* ── Progressive Summary Header ───────────────────────── */}
       <div className="explorer-summary-row" style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
@@ -101,7 +89,7 @@ ORDER BY d.date DESC LIMIT 25`;
         <div className="card" style={{ flex:1, padding:'12px 16px', minWidth:180, display:'flex', alignItems:'center', gap:12 }}>
           <div style={{ fontSize:'1.8rem', opacity:0.8 }}>📋</div>
           <div>
-            <div style={{ fontSize:'1.2rem', fontWeight:800, color:'var(--text-1)' }}>{POLICIES.length}</div>
+            <div style={{ fontSize:'1.2rem', fontWeight:800, color:'var(--text-1)' }}>{totalPolicies}</div>
             <div style={{ fontSize:'0.7rem', color:'var(--text-3)' }}>Tracked Policies</div>
           </div>
         </div>
@@ -110,9 +98,10 @@ ORDER BY d.date DESC LIMIT 25`;
       <div className="tabs" style={{ marginBottom: 20 }}>
         {[
           { id: 'search', label: '🔍 Search' },
-          { id: 'decisions', label: '🏛️ Gov decisions' },
-          { id: 'policies', label: '📋 Policies' },
-          { id: 'graph', label: '🔗 Cypher' },
+          { id: 'decisions', label: '🏛️ Gov Decisions' },
+          { id: 'cases', label: '⚖️ Investigated Cases' },
+          { id: 'policies', label: '📋 Policy Tracker' },
+          { id: 'history', label: '📜 Civic History' }
         ].map(({ id, label }) => (
           <button key={id} className={`tab-btn ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
             {label}
@@ -120,6 +109,9 @@ ORDER BY d.date DESC LIMIT 25`;
         ))}
       </div>
 
+      {/* ──────────────────────────────────────────────────────────
+          TAB: SEARCH
+          ────────────────────────────────────────────────────────── */}
       {tab === 'search' && (
         <>
           <div className="card mb-4">
@@ -165,6 +157,9 @@ ORDER BY d.date DESC LIMIT 25`;
         </>
       )}
 
+      {/* ──────────────────────────────────────────────────────────
+          TAB: GOV DECISIONS
+          ────────────────────────────────────────────────────────── */}
       {tab === 'decisions' && (
         <>
           <div className="card mb-4" style={{
@@ -220,13 +215,7 @@ ORDER BY d.date DESC LIMIT 25`;
                 );
                })}
                {govDecisions.length > 5 && (
-                 <button onClick={() => setExpanded(e => !e)} style={{
-                   width: '100%', padding: '12px', background: 'var(--bg-raised)', 
-                   border: '1px solid var(--border)', borderRadius: 'var(--r)', 
-                   color: 'var(--text-2)', fontWeight: '600', cursor: 'pointer',
-                   marginTop: '10px', transition: 'background 0.15s'
-                 }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-raised)'}>
+                 <button onClick={() => setExpanded(e => !e)} className="btn-full">
                    {expanded ? 'Show less' : `Show all ${govDecisions.length} government signals`}
                  </button>
                )}
@@ -236,29 +225,122 @@ ORDER BY d.date DESC LIMIT 25`;
         </>
       )}
 
+      {/* ──────────────────────────────────────────────────────────
+          TAB: INVESTIGATED CASES
+          ────────────────────────────────────────────────────────── */}
+      {tab === 'cases' && (
+        <div className="cases-grid">
+          {EXPLORER_CASES.map(c => {
+            const isOpen = expandedCase === c.id;
+            
+            // Find live news mapping to this case
+            const caseNews = articles.filter(a => {
+              const lowerT = a.title.toLowerCase();
+              const lowerD = (a.description || '').toLowerCase();
+              return c.keywords.some(kw => lowerT.includes(kw) || lowerD.includes(kw));
+            }).slice(0, 5);
+
+            return (
+              <div key={c.id} className="card" style={{ borderLeft: '4px solid #b91c1c', cursor: 'pointer' }} onClick={() => setExpandedCase(isOpen ? null : c.id)}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 6px 0', color: 'var(--text-1)' }}>{c.title}</h3>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-3)', lineHeight: 1.5 }}>
+                      {c.summary}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {c.keywords.slice(0, 4).map(kw => (
+                    <span key={kw} style={{ fontSize:'0.65rem', background:'var(--bg-raised)', color:'var(--text-4)', padding:'2px 8px', borderRadius:10, border:'1px solid var(--border)' }}>
+                      #{kw}
+                    </span>
+                  ))}
+                  {caseNews.length > 0 && (
+                    <span style={{ fontSize:'0.65rem', background:'rgba(220, 20, 60, 0.1)', color:'var(--crimson)', padding:'2px 8px', borderRadius:10, border:'1px solid rgba(220,20,60,0.3)', fontWeight: 'bold' }}>
+                      🔥 {caseNews.length} live updates
+                    </span>
+                  )}
+                </div>
+
+                {isOpen && (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)', animation: 'msgIn 0.2s ease' }} onClick={e => e.stopPropagation()}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '0.85rem' }}>⏳ Case Timeline</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {c.timeline.map((event, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <span style={{ fontWeight: 800, color: '#3b82f6', fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: 4, flexShrink: 0 }}>
+                            {event.date}
+                          </span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>{event.text}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {caseNews.length > 0 && (
+                      <div style={{ marginTop: 24 }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.85rem' }}>📰 Live News Matches</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {caseNews.map(a => (
+                            <a key={a.id} href={a.link || '#'} target="_blank" rel="noopener noreferrer" 
+                               style={{ display: 'block', padding: '8px 12px', background: 'var(--bg-raised)', borderRadius: 'var(--r)', textDecoration: 'none', color: 'var(--text-1)', fontSize: '0.8rem' }}>
+                              <strong style={{ display: 'block', marginBottom: 4 }}>{a.title}</strong>
+                              <span style={{ color: 'var(--text-4)', fontSize: '0.7rem' }}>{a.source} · {a.timeAgo}</span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div style={{ fontSize:'0.65rem', color:'var(--text-4)', marginTop:12, textAlign:'right' }}>
+                  {isOpen ? 'Close' : 'View full timeline'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────
+          TAB: POLICY TRACKER
+          ────────────────────────────────────────────────────────── */}
       {tab === 'policies' && (
         <div className="card">
-          <div className="card-head">
-            <span className="card-title">📋 Nepal Policy Tracker</span>
-            <span className="card-sub">{POLICIES.length} active policies</span>
+          <div className="card-head" style={{ marginBottom: 16 }}>
+            <span className="card-title">📋 Policy Tracking Hub</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setPolicyType('domestic')} 
+                      className={`chip ${policyType === 'domestic' ? 'on' : ''}`} 
+                      style={{ margin: 0, padding: '4px 12px', fontSize: '0.75rem' }}>🇳🇵 Domestic</button>
+              <button onClick={() => setPolicyType('foreign')} 
+                      className={`chip ${policyType === 'foreign' ? 'on' : ''}`} 
+                      style={{ margin: 0, padding: '4px 12px', fontSize: '0.75rem' }}>🌐 Foreign Relations</button>
+            </div>
           </div>
+
           <table className="tbl">
             <thead><tr><th>Policy Title</th><th>Ministry</th><th>Status</th><th>Progress</th></tr></thead>
             <tbody>
-              {POLICIES.map((p,i) => (
+              {(EXPLORER_POLICIES[policyType] || []).map((p,i) => (
                 <tr key={i}>
-                  <td style={{fontWeight:600}}>{p.title}</td>
+                  <td>
+                    <div style={{fontWeight:600}}>{p.title}</div>
+                    <div style={{fontSize:'0.7rem', color:'var(--text-4)', marginTop: 4}}>{p.desc}</div>
+                  </td>
                   <td className="muted small">{p.ministry}</td>
                   <td>
                     <span className={`badge ${
                       p.status==='approved'||p.status==='implementing' ? 'badge-green' :
-                      p.status==='announced' ? 'badge-blue' : 'badge-amber'
+                      p.status==='ongoing' ? 'badge-blue' : 'badge-amber'
                     }`}>{p.status}</span>
                   </td>
                   <td style={{minWidth:140}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <div className="prog-bar" style={{flex:1}}>
-                        <div className="prog-fill" style={{width:`${p.progress}%`}}/>
+                        <div className="prog-fill" style={{width:`${p.progress}%`, background: policyType === 'foreign' ? '#7c3aed' : ''}}/>
                       </div>
                       <span className="smaller mono dim">{p.progress}%</span>
                     </div>
@@ -270,55 +352,36 @@ ORDER BY d.date DESC LIMIT 25`;
         </div>
       )}
 
-      {tab === 'graph' && (
-        <div className="grid-2">
-          <div className="card">
-            <div className="card-head"><span className="card-title">⚡ Cypher Query Generator</span></div>
-            <input className="search-input" value={query}
-              onChange={e=>setQuery(e.target.value)}
-              placeholder="Type query topic to generate Cypher…"/>
-            <div style={{position:'relative'}}>
-              <button onClick={() => navigator.clipboard.writeText(cypher)}
-                style={{ position:'absolute', top:8, right:8, background:'rgba(255,255,255,0.1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 8px', fontSize:'0.65rem', color:'#60a5fa', cursor:'pointer' }}>
-                Copy
-              </button>
-              <pre style={{
-                padding:14, paddingTop:34, background:'var(--bg-base)',
-                borderRadius:'var(--r)', fontSize:'0.75rem',
-                fontFamily:'var(--mono)', color:'#60a5fa',
-                overflowX:'auto', lineHeight:1.8,
-                border:'1px solid var(--border)', whiteSpace:'pre-wrap',
-                wordBreak:'break-word',
-              }}>{cypher}</pre>
-            </div>
-            <div className="card-head" style={{ marginTop: 14 }}><span className="card-title">🏛️ Gov decision → impact (template)</span></div>
-            <div style={{position:'relative'}}>
-              <button onClick={() => navigator.clipboard.writeText(cypherGovImpact)}
-                style={{ position:'absolute', top:8, right:8, background:'rgba(255,255,255,0.1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 8px', fontSize:'0.65rem', color:'#34d399', cursor:'pointer' }}>
-                Copy
-              </button>
-              <pre style={{
-                padding:14, paddingTop:34, background:'var(--bg-base)',
-                borderRadius:'var(--r)', fontSize:'0.75rem',
-                fontFamily:'var(--mono)', color:'#34d399',
-                overflowX:'auto', lineHeight:1.8,
-                border:'1px solid var(--border)', whiteSpace:'pre-wrap',
-                wordBreak:'break-word',
-              }}>{cypherGovImpact}</pre>
-            </div>
+      {/* ──────────────────────────────────────────────────────────
+          TAB: CIVIC HISTORY
+          ────────────────────────────────────────────────────────── */}
+      {tab === 'history' && (
+        <div className="history-grid" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="card" style={{ background: 'linear-gradient(135deg, rgba(30,58,138,0.05), rgba(22,101,52,0.05))' }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              📜 National Security & Civic Milestones
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-3)', lineHeight: 1.5 }}>
+              A definitive timeline of crucial interventions and structural formations by Nepal's security apparatus and government bodies. Organized for accurate historical tracking.
+            </p>
           </div>
-          <div className="card">
-            <div className="card-head"><span className="card-title">🔗 Graph Schema</span></div>
-            <div style={{fontSize:'0.78rem',lineHeight:2,color:'#94a3b8',fontFamily:'var(--mono)'}}>
-              <div style={{color:'#60a5fa',fontWeight:700,marginBottom:8}}>Node Types</div>
-              {['(:Event {title, category, date, province})','(:GovernmentDecision {title, date, impactHint})','(:Location {name, type, lat, lng})','(:Person {name, role, score})','(:Organization {name, type})','(:Policy {title, status, ministry})','(:PublicGroup {segment}) — e.g. citizens, workers, farmers'].map((n,i)=>(
-                <div key={i} style={{marginBottom:4,color:'#c4b5fd'}}>{n}</div>
-              ))}
-              <div style={{color:'#60a5fa',fontWeight:700,margin:'12px 0 8px'}}>Relationships</div>
-              {['(:GovernmentDecision)-[:AFFECTS {polarity}]->(:PublicGroup)','-[:LOCATED_IN]->','-[:ISSUED_BY]->(:Organization)','-[:RELATED_TO]->','-[:MENTIONS]->'].map((r,i)=>(
-                <div key={i} style={{marginBottom:4,color:'#6ee7b7'}}>{r}</div>
-              ))}
-            </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+            {EXPLORER_HISTORY.map((agency, i) => (
+              <div key={i} className="card" style={{ borderTop: `4px solid ${agency.color}` }}>
+                <h4 style={{ margin: '0 0 16px 0', color: agency.color }}>{agency.agency}</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {agency.events.map((evt, j) => (
+                    <div key={j} style={{ position: 'relative', paddingLeft: 16, borderLeft: `2px solid ${agency.color}40` }}>
+                      <div style={{ position: 'absolute', left: -5, top: 2, width: 8, height: 8, borderRadius: '50%', background: agency.color }} />
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-3)', marginBottom: 2 }}>{evt.year}</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>{evt.title}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-4)', lineHeight: 1.4 }}>{evt.text}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
