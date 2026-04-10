@@ -258,7 +258,7 @@ export default function App() {
       <nav className={`mobile-drawer ${mobileMenuOpen ? 'mobile-drawer-open' : ''}`}
         aria-label="Mobile navigation drawer">
         <button className="mobile-drawer-close" onClick={closeMobileMenu} aria-label="Close menu">✕</button>
-        <SidebarContent onNavigate={navigate} />
+        {SidebarContent({ onNavigate: navigate })}
       </nav>
 
       {/* ══════════════════════════════════════════════════════════
@@ -311,7 +311,7 @@ export default function App() {
 
           {/* Desktop sidebar — hidden on mobile */}
           <aside className="sidebar">
-            <SidebarContent onNavigate={navigate} />
+            {SidebarContent({ onNavigate: navigate })}
           </aside>
 
           {/* Desktop topbar */}
