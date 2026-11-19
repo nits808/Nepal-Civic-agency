@@ -666,6 +666,13 @@ body::before {
   border-color: var(--royal);
   box-shadow: 0 0 0 3px rgba(0,56,147,0.15);
   background: var(--bg-surface);
+  color: var(--text-1);
+}
+[data-theme="dark"] .topbar-search input,
+[data-theme="dark"] .topbar-search input:focus {
+  background: var(--bg-raised) !important;
+  color: #f8fafc !important;
+  border-color: var(--border) !important;
 }
 .topbar-search .ico {
   position:absolute; left:11px; top:50%;
