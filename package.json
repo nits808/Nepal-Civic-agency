@@ -4,11 +4,14 @@
   "description": "National-level civic intelligence platform for Nepal",
   "private": true,
   "workspaces": [
-    "frontend"
+    "frontend",
+    "backend",
+    "packages/*",
+    "tools/*"
   ],
   "scripts": {
-    "dev": "npm -w frontend run dev",
-    "build": "npm -w frontend run build",
+    "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build": "npm run build --workspace=frontend",
     "preview": "npm -w frontend run preview",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down"

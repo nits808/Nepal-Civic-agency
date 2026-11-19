@@ -4,16 +4,20 @@ const apiBase = trimTrailingSlash(
   import.meta.env.VITE_API_BASE_URL || window.location.origin
 );
 
-// BUG-02 FIX: Use relative /ws path so Vite proxy correctly forwards to
-// ws://localhost:4003 (alert-service). Deriving from window.location.origin
-// produced ws://localhost:5173 with no /ws suffix — bypassing the proxy entirely.
-// In production, VITE_WS_BASE_URL should be set to the full wss:// URL.
-const wsBase = import.meta.env.VITE_WS_BASE_URL || '/ws';
+function getWsBase() {
+  if (import.meta.env.VITE_WS_BASE_URL) {
+    return import.meta.env.VITE_WS_BASE_URL;
+  }
+  // Always produce an absolute WebSocket URL
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws`;
+}
 
 const analyticsBase = trimTrailingSlash(
   import.meta.env.VITE_ANALYTICS_API_BASE_URL || apiBase
 );
 
 export const API_BASE_URL = apiBase;
-export const WS_BASE_URL = wsBase;
+export const WS_BASE_URL = getWsBase();
 export const ANALYTICS_API_BASE_URL = analyticsBase;
+export const API_KEY = import.meta.env.VITE_NCIG_API_KEY || 'ncig-dev-key-change-me';

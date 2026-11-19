@@ -172,7 +172,6 @@ app.post('/api/fetch', async (req, res) => {
   fetchAllFeeds(wss).catch(console.error);
 });
 
-// GET /api/health — health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',

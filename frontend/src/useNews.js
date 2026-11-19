@@ -4,15 +4,15 @@
 // Fallback: Client-side RSS via CORS proxies (if backend offline)
 // ---------------------------------------------------------------
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RSS_FEEDS, CORS_PROXIES, parseRSS } from './data.js';
+import { RSS_FEEDS, parseRSS } from './data.js';
 import { API_BASE_URL, WS_BASE_URL } from './config.js';
 
 const BACKEND_URL  = API_BASE_URL;
 const WS_URL       = WS_BASE_URL;
 const CACHE_KEY    = 'ncig_v4_cache';
-const CACHE_TTL    = 3 * 60_000;       // 3 min cache
-const REFRESH_MS   = 90_000;           // client-side fallback refresh
-const TIMEOUT_MS   = 5000;
+const CACHE_TTL    = 9 * 60_000;       // 9 min cache (aligns with 10 min refresh)
+const REFRESH_MS   = 10 * 60_000;     // client-side fallback refresh (10 min)
+const TIMEOUT_MS   = 15000;
 const IMAGE_FETCH_LIMIT = 60;
 const IMAGE_CONCURRENCY = 6;
 
@@ -65,22 +65,20 @@ async function fetchFromBackend() {
 // -- Fallback: client-side RSS fetch -------------------------
 // BUG-03 FIX: Capture + clear timer in each proxy attempt
 async function fetchOneFeed(feed) {
-  for (const proxy of CORS_PROXIES) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    try {
-      const r = await fetch(proxy + encodeURIComponent(feed.url), { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!r.ok) continue;
-      const text = await r.text();
-      if (!text || text.length < 50) continue;
-      return { ok: true, items: parseRSS(text, feed) };
-    } catch {
-      clearTimeout(timer);
-      continue;
-    }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const r = await fetch("/api/rss?url=" + encodeURIComponent(feed.url), { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return { ok: false, items: [] };
+    const text = await r.text();
+    if (!text || text.length < 50) return { ok: false, items: [] };
+    await new Promise(r => setTimeout(r, 0));
+    return { ok: true, items: parseRSS(text, feed) };
+  } catch {
+    clearTimeout(timer);
+    return { ok: false, items: [] };
   }
-  return { ok: false, items: [] };
 }
 
 function dedup(articles) {
@@ -119,24 +117,21 @@ function extractMetaImage(html) {
   }
 }
 
-// BUG-03 FIX: Capture + clear timer in each proxy attempt
+// BUG-03 FIX: Capture + clear timer
 async function fetchOgImage(url) {
   if (!url) return null;
-  for (const proxy of CORS_PROXIES) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    try {
-      const r = await fetch(proxy + encodeURIComponent(url), { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!r.ok) continue;
-      const text = await r.text();
-      if (!text || text.length < 200) continue;
-      const img = extractMetaImage(text);
-      if (img && isValidImageUrl(img)) return img;
-    } catch {
-      clearTimeout(timer);
-      continue;
-    }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const r = await fetch(`/api/rss?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const text = await r.text();
+    if (!text || text.length < 200) return null;
+    const img = extractMetaImage(text);
+    if (img && isValidImageUrl(img)) return img;
+  } catch {
+    clearTimeout(timer);
   }
   return null;
 }

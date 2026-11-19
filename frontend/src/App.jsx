@@ -7,6 +7,7 @@ import BreakingTicker from './BreakingTicker.jsx';
 import EarthquakeWidget from './EarthquakeWidget.jsx';
 import { NewArticleToast, BackendStatus } from './UIComponents.jsx';
 import CommandPalette from './CommandPalette.jsx';
+import { ErrorBoundary } from './ErrorBoundary.jsx';
 
 const DashboardPage = lazy(() =>
   import('./Dashboard.jsx').then((m) => ({ default: m.Dashboard }))
@@ -372,9 +373,11 @@ export default function App() {
 
           <main className="main">
             <div className="page-transition">
-              <Suspense fallback={<PageLoader />}>
-                {renderPage()}
-              </Suspense>
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
+                  {renderPage()}
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </main>
         </div>

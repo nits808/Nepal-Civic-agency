@@ -1,22 +1,27 @@
 // ═══════════════════════════════════════════════════════════════
-// NCIG Backend — SQLite Database Layer
-// Stores articles, cache metadata, and feed status
+// NCIG Backend — Built-in SQLite Database Layer
+// Stores articles, cache metadata, and news sources
 // ═══════════════════════════════════════════════════════════════
 
 import Database from 'better-sqlite3';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { mkdirSync } from 'fs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dir, 'ncig.db');
+const DATA_DIR = process.env.DB_DIR || (process.env.NODE_ENV === 'production' ? join(__dir, 'data') : __dir);
+mkdirSync(DATA_DIR, { recursive: true });
+const DB_PATH = join(DATA_DIR, 'ncig.db');
 
 let db;
 
 export function initDB() {
   db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');   // faster writes
-  db.pragma('synchronous = NORMAL'); // balance durability vs speed
-  db.pragma('cache_size = -64000');  // 64MB in-memory cache
+
+  // Set pragmas for performance
+  db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
+  db.pragma('foreign_keys = ON');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS articles (
@@ -33,8 +38,37 @@ export function initDB() {
       feed_type   TEXT,
       image_url   TEXT,
       has_real_image INTEGER DEFAULT 0,
-      og_image    TEXT,       -- extracted from actual page (server-side)
+      og_image    TEXT,
       fetched_at  INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE TABLE IF NOT EXISTS article_embeddings (
+      article_id  TEXT PRIMARY KEY,
+      embedding   TEXT,
+      updated_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+      FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS sources (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      type        TEXT,
+      tier        INTEGER,
+      province    TEXT,
+      url         TEXT NOT NULL,
+      fb          TEXT,
+      website     TEXT,
+      verified    INTEGER DEFAULT 0,
+      status      TEXT DEFAULT 'active'
+    );
+
+    CREATE TABLE IF NOT EXISTS discovered_sources (
+      id          TEXT PRIMARY KEY,
+      district    TEXT,
+      page_name   TEXT,
+      url         TEXT UNIQUE,
+      discovered_at TEXT,
+      status      TEXT DEFAULT 'new'
     );
 
     CREATE TABLE IF NOT EXISTS feed_status (
@@ -64,15 +98,9 @@ export function initDB() {
     CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category);
     CREATE INDEX IF NOT EXISTS idx_articles_province ON articles(province);
     CREATE INDEX IF NOT EXISTS idx_articles_source   ON articles(source);
-
-    -- Full-text search using FTS5
-    CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
-      title, description, source, category, province,
-      content='articles', content_rowid='rowid'
-    );
   `);
 
-  console.log(`[DB] Initialized at ${DB_PATH}`);
+  console.log(`[DB] Using better-sqlite3 at ${DB_PATH}`);
   return db;
 }
 
@@ -89,49 +117,45 @@ export function upsertArticles(articles) {
       (id, title, link, description, category, district, province,
        date, time_ago, source, feed_type, image_url, has_real_image, og_image, fetched_at)
     VALUES
-      (@id, @title, @link, @description, @category, @district, @province,
-       @date, @timeAgo, @source, @feedType, @imageUrl, @hasRealImage, @ogImage, unixepoch())
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
   `);
 
-  const insertMany = db.transaction((rows) => {
-    let count = 0;
-    for (const row of rows) {
-      try {
-        insert.run({
-          id:           row.id,
-          title:        row.title,
-          link:         row.link || '',
-          description:  row.description || '',
-          category:     row.category || 'politics',
-          district:     row.district || 'Kathmandu',
-          province:     row.province || 'Bagmati',
-          date:         row.date || new Date().toISOString(),
-          timeAgo:      row.timeAgo || 'recently',
-          source:       row.source || '',
-          feedType:     row.feedType || 'media',
-          imageUrl:     row.imageUrl || null,
-          hasRealImage: row.hasRealImage ? 1 : 0,
-          ogImage:      row.ogImage || null,
-        });
-        count++;
-      } catch (_) {/* skip duplicate */}
+  let count = 0;
+  const trx = db.transaction((items) => {
+    for (const row of items) {
+      insert.run(
+        row.id,
+        row.title,
+        row.link || '',
+        row.description || '',
+        row.category || 'politics',
+        row.district || 'Kathmandu',
+        row.province || 'Bagmati',
+        row.date || new Date().toISOString(),
+        row.timeAgo || 'recently',
+        row.source || '',
+        row.feedType || 'media',
+        row.imageUrl || null,
+        row.hasRealImage ? 1 : 0,
+        row.ogImage || null
+      );
+      count++;
     }
-
-    // Keep FTS index in sync — INSERT OR REPLACE breaks FTS rowid tracking
-    // so we do a full rebuild after each batch (cheap for SQLite sizes)
-    if (count > 0) {
-      db.prepare("INSERT INTO articles_fts(articles_fts) VALUES('rebuild')").run();
-    }
-
-    return count;
   });
 
-  return insertMany(articles);
+  try {
+    trx(articles);
+  } catch (e) {
+    console.warn('[DB] upsertArticles failed:', e.message);
+  }
+
+  return count;
 }
 
 // ── Upsert feed status ───────────────────────────────────────
 export function upsertFeedStatus(feedId, feedName, feedType, ok, count, error = null) {
-  const existing = getDB().prepare(`
+  const db = getDB();
+  const existing = db.prepare(`
     SELECT article_count
     FROM feed_status
     WHERE feed_id = ?
@@ -141,7 +165,7 @@ export function upsertFeedStatus(feedId, feedName, feedType, ok, count, error = 
     ? count
     : (existing?.article_count || 0);
 
-  getDB().prepare(`
+  db.prepare(`
     INSERT OR REPLACE INTO feed_status (feed_id, feed_name, feed_type, ok, article_count, last_fetched, error_msg)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(feedId, feedName, feedType, ok ? 1 : 0, normalizedCount, new Date().toISOString(), error);
@@ -152,14 +176,12 @@ export function queryArticles({ limit = 200, offset = 0, category, province, sea
   const db = getDB();
 
   if (search) {
-    // Full-text search
     return db.prepare(`
-      SELECT a.* FROM articles a
-      JOIN articles_fts fts ON a.rowid = fts.rowid
-      WHERE articles_fts MATCH ?
-      ORDER BY a.date DESC
-      LIMIT ? OFFSET ?
-    `).all(`${search}*`, limit, offset);
+        SELECT * FROM articles 
+        WHERE title LIKE ? OR description LIKE ? OR content LIKE ?
+        ORDER BY date DESC
+        LIMIT ? OFFSET ?
+    `).all(`%${search}%`, `%${search}%`, `%${search}%`, limit, offset);
   }
 
   let query = 'SELECT * FROM articles WHERE 1=1';
@@ -177,6 +199,92 @@ export function queryArticles({ limit = 200, offset = 0, category, province, sea
 // ── Get feed statuses ────────────────────────────────────────
 export function getFeedStatuses() {
   return getDB().prepare('SELECT * FROM feed_status ORDER BY feed_name').all();
+}
+
+// ── News Source Management ───────────────────────────────────
+export function getAllSources() {
+  return getDB().prepare("SELECT * FROM sources WHERE status = 'active'").all();
+}
+
+export function upsertSources(sources) {
+  const db = getDB();
+  const insert = db.prepare(`
+    INSERT INTO sources (id, name, type, tier, province, url, fb, website, verified, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      type = excluded.type,
+      tier = excluded.tier,
+      province = excluded.province,
+      url = excluded.url,
+      fb = excluded.fb,
+      website = excluded.website,
+      verified = excluded.verified,
+      status = excluded.status
+  `);
+
+  const trx = db.transaction((items) => {
+    for (const f of items) {
+      insert.run(f.id, f.name, f.type, f.tier, f.province, f.url, f.fb, f.website, f.verified, f.status);
+    }
+  });
+
+  try {
+    trx(sources);
+  } catch (err) {
+    console.error('[DB] upsertSources failed:', err.message);
+  }
+}
+
+// ── Bootstrap Registry ───────────────────────────────────────
+export function bootstrapSources(legacyFeeds) {
+    const db = getDB();
+    const count = db.prepare('SELECT COUNT(*) as c FROM sources').get().c;
+    if (count > 0) return;
+  
+    console.log(`[DB] Bootstrapping sources table with ${legacyFeeds.length} items…`);
+    upsertSources(legacyFeeds.map(f => ({
+      id: f.id,
+      name: f.name,
+      type: f.type || 'media',
+      tier: f.tier || 4,
+      province: f.province || 'National',
+      url: f.url,
+      fb: f.fb || null,
+      website: f.website || null,
+      verified: f.verified ? 1 : 0,
+      status: 'active'
+    })));
+}
+
+// ── Discovery Management ─────────────────────────────────────
+export function saveDiscoveredSources(results) {
+  const db = getDB();
+  const insert = db.prepare(`
+    INSERT INTO discovered_sources (id, district, page_name, url, discovered_at, status)
+    VALUES (?, ?, ?, ?, ?, 'new')
+    ON CONFLICT(url) DO NOTHING
+  `);
+
+  const trx = db.transaction((items) => {
+    for (const row of items) {
+      insert.run(row.id || Buffer.from(row.url).toString('base64'), row.district, row.page_name || row.pageName, row.url, row.discovered_at || row.date);
+    }
+  });
+
+  try {
+    trx(results);
+  } catch (err) {
+    console.error('[DB] saveDiscoveredSources failed:', err.message);
+  }
+}
+
+export function getDiscoveredSources(status = 'new') {
+  return getDB().prepare('SELECT * FROM discovered_sources WHERE status = ? ORDER BY discovered_at DESC').all(status);
+}
+
+export function updateDiscoveryStatus(id, status) {
+  getDB().prepare('UPDATE discovered_sources SET status = ? WHERE id = ?').run(status, id);
 }
 
 // ── Cache og:image for URL ───────────────────────────────────

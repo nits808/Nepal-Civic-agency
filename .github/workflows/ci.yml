@@ -1,0 +1,67 @@
+name: NCIG 2-Tier CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify No SQLite Artifacts Committed
+        run: |
+          if git ls-files | grep -E '\.db$|\.db-wal$|\.db-shm$'; then
+            echo "Error: SQLite database files found in repository index!"
+            exit 1
+          fi
+
+      - name: Syntax & Import Checks (Backend)
+        run: |
+          node --check backend/server.js
+          node --check backend/db.js
+
+      - name: Build Frontend
+        run: npm run build --workspace=frontend
+
+  container-smoke-test:
+    runs-on: ubuntu-latest
+    needs: validate-and-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Build Containers
+        run: docker compose build --parallel
+
+      - name: Run Smoke Test
+        run: |
+          docker compose up -d
+          echo "Waiting for services to initialize..."
+          sleep 10
+          
+          echo "Testing Backend Health..."
+          curl --fail http://localhost:4000/api/health || exit 1
+          
+          echo "Testing Frontend Root..."
+          curl --fail http://localhost:5173 || exit 1
+          
+      - name: Teardown
+        if: always()
+        run: docker compose down -v

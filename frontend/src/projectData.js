@@ -1,4 +1,3 @@
-import { CORS_PROXIES } from './data.js';
 
 const CKAN_PORTALS = [
   {
@@ -72,14 +71,11 @@ async function fetchJsonWithFallback(url) {
   try {
     return await fetchJson(url);
   } catch (err) {
-    for (const proxy of CORS_PROXIES) {
-      try {
-        return await fetchJson(proxy + encodeURIComponent(url));
-      } catch {
-        await sleep(100);
-      }
+    try {
+      return await fetchJson(`/api/rss?url=${encodeURIComponent(url)}`);
+    } catch {
+      throw err;
     }
-    throw err;
   }
 }
 
@@ -148,6 +144,7 @@ function mapStatus(raw) {
   if (v.includes('operat') || v.includes('complete') || v.includes('commission')) return 'operating';
   if (v.includes('construct') || v.includes('implement') || v.includes('work')) return 'construction';
   if (v.includes('plan') || v.includes('design') || v.includes('feasibility')) return 'planning';
+  if (v.includes('stalled') || v.includes('delay') || v.includes('halt')) return 'stalled';
   if (v.includes('ongoing') || v.includes('active')) return 'ongoing';
   return null;
 }
@@ -201,6 +198,8 @@ function normalizeProject(row, source, idx = 0) {
     pickValue(row, ['description', 'details', 'remarks', 'summary']) ||
     'Open data record. Refer to the source portal for full documentation.';
 
+  const priority = pickValue(row, ['priority', 'classification']) || 'Standard';
+
   return {
     id: `${source.id}-${idx}`,
     name: String(name).trim(),
@@ -211,6 +210,7 @@ function normalizeProject(row, source, idx = 0) {
     budgetCurrency: currency || (budgetValue ? 'NPR' : null),
     spent,
     status,
+    priority: String(priority).trim(),
     province: String(province).trim(),
     district: String(district).trim(),
     startYear: startYear || 2000,
@@ -301,6 +301,7 @@ export function computeProjectStats(projects) {
     construction: 0,
     planning: 0,
     ongoing: 0,
+    stalled: 0,
     budgetUsd: 0,
     budgetNpr: 0,
     hydroMw: 0,
@@ -312,6 +313,7 @@ export function computeProjectStats(projects) {
     if (p.status === 'construction') totals.construction += 1;
     if (p.status === 'planning') totals.planning += 1;
     if (p.status === 'ongoing') totals.ongoing += 1;
+    if (p.status === 'stalled') totals.stalled += 1;
 
     const parsedBudget = Number.isFinite(p.budgetValue) ? null : parseBudgetWithUnits(p.budget);
     const budgetValue = Number.isFinite(p.budgetValue)
@@ -352,161 +354,148 @@ export function mergeProjects(seed, incoming) {
 }
 
 export const SEED_PROJECTS = [
-  // Infrastructure / Hydro
-  { id:1, name:'Upper Tamakoshi Hydropower', sector:'Hydro Energy', capacity:'456 MW', budget:'USD 1.6B', spent:100, status:'operating', province:'Bagmati', district:'Dolakha', startYear:2011, endYear:2021, agency:'NTDC', description:'Nepal\'s largest domestic hydropower plant, contributing significantly to electricity supply.',
+  // Hydro Energy
+  { id:1, name:'Upper Tamakoshi Hydropower', sector:'Hydro Energy', priority:'National Pride', capacity:'456 MW', budget:'USD 1.6B', spent:100, status:'operating', province:'Bagmati', district:'Dolakha', startYear:2011, endYear:2021, agency:'NTDC', description:'Nepal\'s largest domestic hydropower plant, contributing significantly to electricity supply.',
     timeline: [
-      { date: '2026-01', text: 'Sustained full capacity generation during dry season using optimized reservoir management.' },
-      { date: '2024-05', text: 'Completed minor post-construction structural reviews.' },
+      { date: '2026-04', text: 'Resumed full generation after extensive repairs following late 2024 flood damage.' },
+      { date: '2024-09', text: 'Production halted temporarily due to severe flood and landslide damage.' },
       { date: '2021-09', text: 'Plant fully operational.' }
     ]
   },
-  { id:2, name:'Budhigandaki Hydropower', sector:'Hydro Energy', capacity:'1200 MW', budget:'USD 2.5B', spent:25, status:'construction', province:'Bagmati', district:'Gorkha/Dhading', startYear:2019, endYear:2030, agency:'BKHPC', description:'Under-construction mega hydro project to address Nepal\'s energy deficit.',
+  { id:2, name:'Budhigandaki Hydropower', sector:'Hydro Energy', priority:'National Pride', capacity:'1200 MW', budget:'USD 2.5B', spent:25, status:'construction', province:'Bagmati', district:'Gorkha/Dhading', startYear:2019, endYear:2030, agency:'BKHPC', description:'Under-construction mega hydro project. Financial structure approved in early 2026.',
     timeline: [
-      { date: '2026-03', text: 'Tunnel boring advancing steadily. Resettlement compensation 85% complete.' },
+      { date: '2026-03', text: 'Government approved financial investment structure (70:30 debt-to-equity).' },
       { date: '2025-11', text: 'Contractual disputes resolved; civil works resumed.' },
       { date: '2024-08', text: 'Land acquisition in primary zone finalized.' }
     ]
   },
-  { id:3, name:'Arun III Hydropower', sector:'Hydro Energy', capacity:'900 MW', budget:'USD 1.04B', spent:65, status:'construction', province:'Province No. 1', district:'Sankhuwasabha', startYear:2018, endYear:2027, agency:'SJVN', description:'India-Nepal joint hydropower project in eastern Nepal. Delayed from 2025 target.',
+  { id:3, name:'Arun III Hydropower', sector:'Hydro Energy', priority:'National Pride', capacity:'900 MW', budget:'USD 1.04B', spent:65, status:'construction', province:'Province No. 1', district:'Sankhuwasabha', startYear:2018, endYear:2027, agency:'SJVN', description:'India-Nepal joint hydropower project in eastern Nepal.',
     timeline: [
-      { date: '2026-02', text: 'Electromechanical equipment installation started at the powerhouse.' },
-      { date: '2025-06', text: 'Civil works crossed 60% completion. Dam construction delayed by monsoons.' },
-      { date: '2024-12', text: 'Power house excavation completed.' }
+      { date: '2026-04', text: 'Substantial completion of dam, tunnel, and powerhouse structures.' },
+      { date: '2026-02', text: 'Electromechanical equipment installation started at the powerhouse.' }
     ]
   },
-  { id:4, name:'West Seti Hydropower', sector:'Hydro Energy', capacity:'750 MW', budget:'USD 1.2B', spent:12, status:'planning', province:'Sudurpashchim', district:'Doti/Achham', startYear:2025, endYear:2032, agency:'NHPC', description:'Major export-oriented hydro project in far-western Nepal.',
+  { id:25, name:'Upper Arun Hydropower', sector:'Hydro Energy', priority:'National Pride', capacity:'1,063 MW', budget:'USD 1.3B', spent:8, status:'construction', province:'Province No. 1', district:'Sankhuwasabha', startYear:2024, endYear:2032, agency:'NEA', description:'Semi-reservoir project advancing with a domestic investment model.',
     timeline: [
-      { date: '2026-01', text: 'Finalizing PPA (Power Purchase Agreement) terms with regional buyers.' },
-      { date: '2025-09', text: 'DPR finalized and environmental clearance secured.' }
+      { date: '2026-03', text: 'Pre-construction 21km access road development underway.' },
+      { date: '2026-01', text: 'Financing structure finalized utilizing domestic banks and public shares.' }
     ]
   },
-  { id:5, name:'Trishuli-3A Hydropower', sector:'Hydro Energy', capacity:'60 MW', budget:'USD 160M', spent:100, status:'operating', province:'Bagmati', district:'Nuwakot', startYear:2012, endYear:2017, agency:'NEA', description:'Run-of-river project serving central grid.',
+  { id:26, name:'Lower Arun Hydropower', sector:'Hydro Energy', priority:'Strategic', capacity:'669 MW', budget:'USD 900M', spent:2, status:'planning', province:'Province No. 1', district:'Sankhuwasabha', startYear:2026, endYear:2033, agency:'SJVN', description:'Downstream cascade project of Arun III.',
     timeline: [
-      { date: '2026-03', text: 'Routine decadal maintenance and silt clearance underway.' },
-      { date: '2017-08', text: 'Fully operational.' }
-    ]
-  },
-
-  // Road & Transport
-  { id:6, name:'Kathmandu-Terai Fast Track', sector:'Roads', capacity:'72.5 km', budget:'USD 1.1B', spent:65, status:'construction', province:'Bagmati', district:'Chitwan/Lalitpur', startYear:2017, endYear:2028, agency:'Nepal Army', description:'Expressway cutting travel from Kathmandu to Terai from 4.5h to 1.5h. Target shifted to 2028.',
-    timeline: [
-      { date: '2026-03', text: 'Mahadevtar twin tunnels officially pierced. 65% total physical progress.' },
-      { date: '2025-10', text: 'High bridges construction ongoing over difficult terrain.' },
-      { date: '2024-05', text: 'Tunnel boring and sub-grade preparation across 5 sections.' }
-    ]
-  },
-  { id:7, name:'Nagdhunga Tunnel', sector:'Roads', capacity:'2.68 km', budget:'USD 108M', spent:95, status:'construction', province:'Bagmati', district:'Kathmandu', startYear:2019, endYear:2026, agency:'DoR', description:'Twin-tube tunnel to ease Kathmandu valley congestion westward.',
-    timeline: [
-      { date: '2026-02', text: 'Trial runs successful. Final safety audits and ventilation checks ongoing.' },
-      { date: '2025-08', text: 'Lighting, asphalt, and emergency extraction systems installed.' },
-      { date: '2024-04', text: 'Main tunnel breakthrough achieved.' }
-    ]
-  },
-  { id:8, name:'Mid-Hill Highway', sector:'Roads', capacity:'1,776 km', budget:'USD 800M', spent:52, status:'construction', province:'National', district:'Multiple', startYear:2013, endYear:2029, agency:'DoR', description:'East-west highway connecting hilly districts.',
-    timeline: [
-      { date: '2026-01', text: 'Over 900km blacktopped. Working on critical bridges in Karnali.' },
-      { date: '2025-07', text: 'Budget allocation increased for remaining highly challenging vertical cliffs.' }
-    ]
-  },
-  { id:9, name:'Postal Highway (Hulaki)', sector:'Roads', capacity:'1,027 km', budget:'USD 500M', spent:80, status:'construction', province:'Madhesh', district:'Multiple Terai', startYear:2015, endYear:2027, agency:'DoR', description:'Southern belt road improving Terai connectivity.',
-    timeline: [
-      { date: '2026-02', text: '800km+ blacktopped. Remaining segments delayed by land compensation issues.' },
-      { date: '2025-01', text: 'Major bridge across Kamala river resumed post-redesign.' }
-    ]
-  },
-  { id:10, name:'Kathmandu Ring Road Upgrade', sector:'Roads', capacity:'27 km', budget:'USD 210M', spent:85, status:'construction', province:'Bagmati', district:'Kathmandu', startYear:2020, endYear:2026, agency:'KUKL/DoR', description:'Widening Kathmandu Ring Road to 8 lanes total with service tracks.',
-    timeline: [
-      { date: '2026-03', text: 'Final northern stretch near Balaju nearing completion. Tree planting initiated.' },
-      { date: '2025-09', text: 'Kalanki to Maharajgunj phase 2 structural widening completed.' }
+      { date: '2026-04', text: 'Patel Engineering declared L1 bidder for major civil works.' }
     ]
   },
 
-  // Airport & Aviation
-  { id:11, name:'Nijgadh International Airport', sector:'Aviation', capacity:'15M passengers', budget:'USD 1.5B', spent:10, status:'planning', province:'Madhesh', district:'Bara', startYear:2026, endYear:2035, agency:'CAAN', description:'Second international airport to decongest TIA, heavily redesigned for ecological compliance.',
+  // Transport & Roads
+  { id:6, name:'Kathmandu-Terai Fast Track', sector:'Roads', priority:'National Pride', capacity:'72.5 km', budget:'USD 1.1B', spent:45, status:'construction', province:'Bagmati', district:'Lalitpur/Makwanpur', startYear:2017, endYear:2027, agency:'Nepal Army', description:'Expressway managed by Nepali Army. Deadline extended to mid-April 2027.',
     timeline: [
-      { date: '2026-03', text: 'Supreme Court approved revised ecological boundary. Core site prep beginning.' },
-      { date: '2025-04', text: 'Redesign submitted reducing forest area consumption by 40%.' }
+      { date: '2026-04', text: 'Physical progress reached 45%. Over 54% work remaining.' },
+      { date: '2026-03', text: 'Breakthrough achieved on Lendanda and Dhedre major tunnels.' }
     ]
   },
-  { id:12, name:'TIA Expansion Project', sector:'Aviation', capacity:'+8M capacity', budget:'USD 415M', spent:75, status:'construction', province:'Bagmati', district:'Kathmandu', startYear:2020, endYear:2026, agency:'CAAN', description:'New passenger terminal and apron expansion at Tribhuvan International Airport.',
+  { id:8, name:'Mid-Hill Highway', sector:'Roads', priority:'National Pride', capacity:'1,776 km', budget:'USD 800M', spent:82, status:'construction', province:'National', district:'Multiple', startYear:2013, endYear:2027, agency:'DoR', description:'East-west highway connecting hilly districts.',
     timeline: [
-      { date: '2026-02', text: 'New international terminal roof closed. Interior boarding gates being fitted.' },
-      { date: '2025-08', text: 'Apron expansion completed, adding 12 new parking bays.' }
+      { date: '2026-04', text: 'Physical progress reported at 81.73%.' }
     ]
   },
-
-  // Water & Irrigation
-  { id:13, name:'Melamchi Water Supply', sector:'Water Supply', capacity:'510 MLD', budget:'USD 500M', spent:98, status:'operating', province:'Bagmati', district:'Sindhupalchok', startYear:2000, endYear:2021, agency:'MWSDB', description:'Diversion of Melamchi river to Kathmandu valley water supply.',
+  { id:9, name:'Postal Highway (Hulaki)', sector:'Roads', priority:'National Pride', capacity:'1,027 km', budget:'USD 500M', spent:74, status:'construction', province:'Madhesh', district:'Multiple Terai', startYear:2015, endYear:2027, agency:'DoR', description:'Southern belt road improving Terai connectivity.',
     timeline: [
-      { date: '2026-01', text: 'Stable supply maintained. Yangri and Larke rivers phase DPR updated.' },
-      { date: '2024-10', text: 'Headworks permanently rebuilt and reinforced post-2021 floods.' }
+      { date: '2026-04', text: 'Overall physical progress reported at 74.35%.' }
     ]
   },
-  { id:14, name:'Bheri Babai Diversion', sector:'Irrigation', capacity:'40 cumecs', budget:'USD 130M', spent:92, status:'construction', province:'Lumbini', district:'Surkhet/Dang', startYear:2015, endYear:2026, agency:'DoI', description:'Inter-basin water transfer from Karnali zone to Dang district.',
+  { id:7, name:'Nagdhunga Tunnel', sector:'Roads', priority:'Strategic', capacity:'2.68 km', budget:'USD 108M', spent:97, status:'construction', province:'Bagmati', district:'Kathmandu', startYear:2019, endYear:2026, agency:'DoR', description:'Twin-tube tunnel. Nearing full operational status.',
     timeline: [
-      { date: '2026-03', text: 'Powerhouse structure 95% complete. Hydro-mechanical equipment testing.' },
-      { date: '2025-02', text: 'Primary distribution canal civil works finished.' }
+      { date: '2026-05', text: 'Scheduled for trial operations in the second week of May.' },
+      { date: '2026-04', text: 'Yusin-ART JV selected for tunnel management; toll rates published in Gazette.' }
     ]
   },
-  { id:15, name:'Sikta Irrigation Project', sector:'Irrigation', capacity:'121,500 ha', budget:'USD 200M', spent:78, status:'construction', province:'Lumbini', district:'Banke', startYear:2008, endYear:2027, agency:'DoI', description:'One of Nepal\'s largest irrigation canal systems in western Terai.',
+  { id:27, name:'East-West Railway', sector:'Rail', priority:'National Pride', capacity:'945 km', budget:'USD 3.8B', spent:5, status:'stalled', province:'National', district:'Multiple', startYear:2010, endYear:2040, agency:'DoRW', description:'Mega electric railway project facing massive financial and land acquisition hurdles.',
     timeline: [
-      { date: '2026-02', text: 'Western main canal operating. Eastern branch extension pushing towards 78%.' },
-      { date: '2024-11', text: 'Repairs on previously eroded sections completed with new concrete formulation.' }
+      { date: '2026-04', text: 'Construction largely halted. Progress limited to Bardibas-Nijgadh section due to compensation disputes.' }
     ]
   },
-
-  // Digital / IT
-  { id:16, name:'Digital Nepal Framework', sector:'Digital', capacity:'8 domains', budget:'USD 250M', spent:45, status:'ongoing', province:'National', district:'National', startYear:2019, endYear:2028, agency:'MoICT', description:'National digital transformation across 8 service domains.',
+  { id:36, name:'Kathmandu Valley Metro Rail', sector:'Rail', priority:'Strategic', capacity:'Valley-wide', budget:'TBD', spent:2, status:'planning', province:'Bagmati', district:'Kathmandu', startYear:2026, endYear:2035, agency:'DoRW/NPC', description:'Proposed metro rail system for Kathmandu Valley.',
     timeline: [
-      { date: '2026-03', text: 'National ID linked to banking and taxation. Over 15M IDs issued.' },
-      { date: '2025-07', text: 'Central e-Governance interoperability bus deployed.' }
-    ]
-  },
-  { id:17, name:'National Broadband Policy', sector:'Digital', capacity:'100% target', budget:'USD 120M', spent:80, status:'ongoing', province:'National', district:'National', startYear:2021, endYear:2027, agency:'NTA', description:'Universal broadband access including rural Nepal.',
-    timeline: [
-      { date: '2026-01', text: 'Fiber reached 68 of 77 districts. Satellite backup for remote mountains active.' },
-      { date: '2025-05', text: 'Completed backbone connectivity for all rural municipalities in Gandaki/Lumbini.' }
+      { date: '2026-04', text: 'NPC proposed funding for detailed feasibility study in the upcoming budget.' }
     ]
   },
 
-  // Urban Development
-  { id:18, name:'Smart Biratnagar Project', sector:'Urban', capacity:'10 smart zones', budget:'USD 45M', spent:65, status:'ongoing', province:'Province No. 1', district:'Morang', startYear:2022, endYear:2027, agency:'MoUD', description:'Smart city infrastructure for Biratnagar metropolitan.',
+  // Aviation
+  { id:11, name:'Nijgadh International Airport', sector:'Aviation', priority:'National Pride', capacity:'15M passengers', budget:'USD 1.5B', spent:5, status:'stalled', province:'Madhesh', district:'Bara', startYear:2015, endYear:2035, agency:'CAAN', description:'Proposed massive international airport. Effectively on hold due to environmental and legal challenges.',
     timeline: [
-      { date: '2026-02', text: 'Traffic AI grid active. Underground fiber and drain systems completed in zone 1-5.' },
-      { date: '2024-09', text: 'Smart surveillance and unified control center went live.' }
+      { date: '2026-04', text: 'Project remains stalled following previous Supreme Court verdict halting construction.' }
     ]
   },
-  { id:19, name:'Integrated Urban Resilience', sector:'Urban', capacity:'6 cities', budget:'USD 80M', spent:40, status:'ongoing', province:'National', district:'Multiple', startYear:2021, endYear:2028, agency:'MoUD/WB', description:'Earthquake resilience and climate adaptation for 6 cities.',
+  { id:28, name:'Gautam Buddha Intl Airport', sector:'Aviation', priority:'National Pride', capacity:'2M passengers', budget:'USD 76M', spent:100, status:'operating', province:'Lumbini', district:'Rupandehi', startYear:2015, endYear:2022, agency:'CAAN', description:'Operational international airport in Bhairahawa.',
     timeline: [
-      { date: '2026-03', text: 'Dharan and Pokhara flood-management infrastructure upgrades completed.' },
-      { date: '2025-11', text: 'Kathmandu critical hospital retrofitting phase finalized.' }
+      { date: '2026-01', text: 'Operating and serving international flights.' }
+    ]
+  },
+  { id:29, name:'Pokhara Regional Intl Airport', sector:'Aviation', priority:'National Pride', capacity:'1M passengers', budget:'USD 305M', spent:100, status:'operating', province:'Gandaki', district:'Kaski', startYear:2016, endYear:2023, agency:'CAAN', description:'Operational regional international airport.',
+    timeline: [
+      { date: '2026-01', text: 'Operating and serving domestic and international flights.' }
     ]
   },
 
-  // Government 100-Day Action Plan (Pratipakchya)
-  { id:20, name:'100-Day Plan: Ministry Restructuring', sector:'Governance', capacity:'17 Ministries', budget:'Administrative', spent:15, status:'ongoing', province:'National', district:'Kathmandu', startYear:2026, endYear:2026, agency:'PMO', description:'Limit the number of federal ministries to 17 and amend work division regulations. (Commitment #008/#009)',
+  // Water, Irrigation & Development
+  { id:13, name:'Melamchi Water Supply Phase 1', sector:'Water Supply', priority:'National Pride', capacity:'170 MLD', budget:'USD 500M', spent:95, status:'operating', province:'Bagmati', district:'Sindhupalchok', startYear:2000, endYear:2021, agency:'MWSDB', description:'Key water supply project for Kathmandu. Faces seasonal closures due to flood risks.',
     timeline: [
-      { date: '2026-10', text: 'Targeted completion within the first 100 days. Currently under cabinet review.' }
+      { date: '2026-04', text: 'Additional Rs 4.5 billion estimated to fully restore headworks for year-round operation.' },
+      { date: '2025-07', text: 'Tunnel mouth closed during monsoon to prevent flood damage.' }
     ]
   },
-  { id:21, name:'100-Day Plan: Anti-Corruption and Assets Probe', sector:'Governance', capacity:'National Audit', budget:'N/A', spent:5, status:'ongoing', province:'National', district:'National', startYear:2026, endYear:2026, agency:'CIAA/Gov', description:'Form empowered asset investigation committee and enforce zero-tolerance policy against corruption. (Commitment #043/#045)',
+  { id:14, name:'Bheri Babai Diversion', sector:'Irrigation', priority:'National Pride', capacity:'40 cumecs', budget:'USD 130M', spent:69, status:'construction', province:'Karnali', district:'Surkhet/Dang', startYear:2015, endYear:2027, agency:'DoI', description:'Inter-basin water transfer project. Experiencing significant delays.',
     timeline: [
-      { date: '2026-10', text: 'Asset investigation committee framework in progress.' }
+      { date: '2026-04', text: 'Physical progress at 69%. Contractor requesting fourth deadline extension.' },
+      { date: '2026-03', text: 'Discussions ongoing to potentially terminate current joint venture contract due to slow work.' }
     ]
   },
-  { id:22, name:'100-Day Plan: Digital Signature System', sector:'Digital', capacity:'Nationwide', budget:'TBD', spent:0, status:'planning', province:'National', district:'National', startYear:2026, endYear:2026, agency:'MoCIT', description:'Implement digital signature system via National ID Card/Biometric. (Commitment #033)',
+  { id:15, name:'Sikta Irrigation Project', sector:'Irrigation', priority:'National Pride', capacity:'42,766 ha', budget:'USD 200M', spent:46, status:'construction', province:'Lumbini', district:'Banke', startYear:2005, endYear:2028, agency:'DoI', description:'Massive irrigation network. Slow progress over two decades.',
     timeline: [
-      { date: '2026-10', text: 'Technical feasibility and biometric integration study commenced.' }
+      { date: '2026-04', text: 'Progress at 46%. Currently providing irrigation to 24,000 hectares.' }
     ]
   },
-  { id:23, name:'100-Day Plan: Free Blue Bus for Women', sector:'Urban', capacity:'25 Buses', budget:'Subsidized', spent:0, status:'planning', province:'Bagmati', district:'Kathmandu Valley', startYear:2026, endYear:2026, agency:'MoPIT', description:'Introduce free Blue Bus service for women within the first 100 days. (Commitment #097)',
+  { id:30, name:'Sunkoshi Marin Diversion', sector:'Irrigation', priority:'National Pride', capacity:'122,000 ha', budget:'USD 350M', spent:15, status:'stalled', province:'Bagmati', district:'Sindhuli', startYear:2021, endYear:2028, agency:'DoI', description:'Major irrigation and hydropower diversion project. Civil works stalled.',
     timeline: [
-      { date: '2026-10', text: 'Tendering process for 25 electronic blue buses planned.' }
+      { date: '2026-04', text: 'Government preparing fresh tenders for headworks following Supreme Court clearance.' },
+      { date: '2025-11', text: 'Contract with Patel-Raman JV terminated due to only 10% civil works completion.' },
+      { date: '2024-05', text: 'Main 13.3 km tunnel successfully completed.' }
     ]
   },
-  { id:24, name:'100-Day Plan: PM Delivery Unit', sector:'Governance', capacity:'Executive Oversight', budget:'Administrative', spent:10, status:'ongoing', province:'National', district:'Kathmandu', startYear:2026, endYear:2026, agency:'PMO', description:'Establish a Prime Minister Delivery Unit immediately to ensure timely project execution. (Commitment #064)',
+  { id:31, name:'Rani Jamara Kulariya', sector:'Irrigation', priority:'National Pride', capacity:'38,300 ha', budget:'USD 180M', spent:72, status:'construction', province:'Sudurpashchim', district:'Kailali', startYear:2011, endYear:2027, agency:'DoI', description:'Modernization of farmer-managed irrigation systems.',
     timeline: [
-      { date: '2026-10', text: 'Delivery unit formation and staffing process initiated.' }
+      { date: '2026-02', text: 'Phase 3 underway to expand services to Bhajani, Joshipur, and Ghodaghodi.' },
+      { date: '2025-06', text: 'Phase 2 completed, providing year-round irrigation to 14,300 hectares and 4.71 MW hydro power.' }
+    ]
+  },
+  { id:32, name:'Lumbini Area Development', sector:'Heritage', priority:'National Pride', capacity:'Masterplan', budget:'USD 120M', spent:88, status:'construction', province:'Lumbini', district:'Rupandehi', startYear:1978, endYear:2026, agency:'LDT', description:'Development of the birthplace of Lord Buddha according to the Kenzo Tange masterplan.',
+    timeline: [
+      { date: '2026-04', text: 'High-performing project with approximately 88% physical progress.' }
+    ]
+  },
+  { id:33, name:'Pashupati Area Development', sector:'Heritage', priority:'National Pride', capacity:'Masterplan', budget:'USD 95M', spent:82, status:'construction', province:'Bagmati', district:'Kathmandu', startYear:2000, endYear:2027, agency:'PADT', description:'Conservation and development of the holy Pashupatinath area.',
+    timeline: [
+      { date: '2026-04', text: 'Progress reported to be over 80% complete.' }
+    ]
+  },
+
+  // Urban & IT
+  { id:16, name:'Digital Nepal Framework', sector:'Digital', priority:'Strategic', capacity:'8 domains', budget:'USD 250M', spent:45, status:'ongoing', province:'National', district:'National', startYear:2019, endYear:2028, agency:'MoCIT', description:'National digital transformation across 8 service domains.',
+    timeline: [
+      { date: '2026-03', text: 'National ID linked to banking and taxation. Over 15M IDs issued.' }
+    ]
+  },
+
+  // Governance & Policy
+  { id:20, name:'100-Day Plan: Ministry Restructuring', sector:'Governance', priority:'Standard', capacity:'17 Ministries', budget:'Administrative', spent:15, status:'ongoing', province:'National', district:'Kathmandu', startYear:2026, endYear:2026, agency:'PMO', description:'Limit the number of federal ministries to 17 and amend work division regulations.',
+    timeline: [
+      { date: '2026-04', text: 'Targeted completion within the first 100 days. Currently under cabinet review.' }
+    ]
+  },
+  { id:21, name:'100-Day Plan: Anti-Corruption and Assets Probe', sector:'Governance', priority:'Standard', capacity:'National Audit', budget:'N/A', spent:5, status:'ongoing', province:'National', district:'National', startYear:2026, endYear:2026, agency:'CIAA/Gov', description:'Form empowered asset investigation committee and enforce zero-tolerance policy against corruption.',
+    timeline: [
+      { date: '2026-04', text: 'Asset investigation committee framework in progress.' }
     ]
   }
 ];

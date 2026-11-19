@@ -1,3 +1,25 @@
+import { URL } from 'url';
+
+function isSafeUrl(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    
+    const host = u.hostname;
+    if (host === 'localhost') return false;
+    if (/^127\.\d+\.\d+\.\d+$/.test(host)) return false;
+    if (/^169\.254\.\d+\.\d+$/.test(host)) return false;
+    if (/^10\.\d+\.\d+\.\d+$/.test(host)) return false;
+    if (/^192\.168\.\d+\.\d+$/.test(host)) return false;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(host)) return false;
+    if (host.includes('::')) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 import { RSS_FEEDS } from './feeds.js';
 import { parseRSSText } from './parser.js';
 import {
@@ -8,12 +30,28 @@ import {
   getDB,
   getFeedHttpCache,
   upsertFeedHttpCache,
+  getAllSources,
 } from './db.js';
 
 const FETCH_TIMEOUT_MS = 8000;
 const OG_FETCH_TIMEOUT = 5000;
 
 async function fetchFeed(feed) {
+  if (!isSafeUrl(feed.url)) {
+    return { ok: false, notModified: false, articles: [], count: 0, error: 'Unsafe SSRF URL blocked' };
+  }
+  
+  let targetUrl = feed.url;
+  if (targetUrl.includes('youtube.com/channel/')) {
+      const channelId = targetUrl.split('channel/')[1].split('/')[0].split('?')[0];
+      targetUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+  } else if (!targetUrl.includes('.xml') && !targetUrl.includes('/rss') && !targetUrl.includes('/feed') && !targetUrl.includes('youtube.com')) {
+      try {
+          const domain = new URL(targetUrl).hostname.replace('www.', '');
+          targetUrl = `https://news.google.com/rss/search?q=site:${domain}`;
+      } catch(e){}
+  }
+  
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
 
@@ -26,7 +64,7 @@ async function fetchFeed(feed) {
     if (cache?.etag) headers['If-None-Match'] = cache.etag;
     if (cache?.last_modified) headers['If-Modified-Since'] = cache.last_modified;
 
-    const res = await fetch(feed.url, { signal: ctrl.signal, headers });
+    const res = await fetch(targetUrl, { signal: ctrl.signal, headers });
     clearTimeout(timer);
 
     if (res.status === 304) {
@@ -52,7 +90,7 @@ async function fetchFeed(feed) {
 }
 
 export async function fetchOgImage(url) {
-  if (!url || url.startsWith('#')) return null;
+  if (!url || url.startsWith('#') || !isSafeUrl(url)) return null;
 
   const cached = getCachedOgImage(url);
   if (cached) return cached;
@@ -77,7 +115,14 @@ export async function fetchOgImage(url) {
       html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
       html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i);
 
-    const ogImage = ogMatch ? ogMatch[1] : null;
+    let ogImage = ogMatch ? ogMatch[1] : null;
+    if (ogImage && !ogImage.startsWith('http')) {
+        try {
+            ogImage = new URL(ogImage, url).href;
+        } catch(e) {
+            ogImage = null;
+        }
+    }
     if (ogImage) cacheOgImage(url, ogImage);
     return ogImage;
   } catch {
@@ -87,10 +132,11 @@ export async function fetchOgImage(url) {
 }
 
 export async function fetchAllFeeds(wss = null) {
-  console.log(`[Fetcher] Starting fetch cycle for ${RSS_FEEDS.length} feeds...`);
+  const sources = getAllSources();
+  console.log(`[Fetcher] Starting fetch cycle for ${sources.length} feeds...`);
   const startTime = Date.now();
 
-  const promises = RSS_FEEDS.map((feed) =>
+  const promises = sources.map((feed) =>
     fetchFeed(feed).then((result) => {
       upsertFeedStatus(
         feed.id,
@@ -119,7 +165,7 @@ export async function fetchAllFeeds(wss = null) {
   const successful = results.filter((r) => r.status === 'fulfilled' && r.value.ok).length;
   const unchanged = results.filter((r) => r.status === 'fulfilled' && r.value.notModified).length;
   console.log(
-    `[Fetcher] Done in ${elapsed}s - ${successful}/${RSS_FEEDS.length} feeds OK (${unchanged} unchanged)`
+    `[Fetcher] Done in ${elapsed}s - ${successful}/${sources.length} feeds OK (${unchanged} unchanged)`
   );
 
   return results;
@@ -142,3 +188,4 @@ export async function enrichArticlesWithOgImages(articles) {
     })
   );
 }
+

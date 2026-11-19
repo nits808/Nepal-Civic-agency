@@ -1,4 +1,4 @@
-﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // NCIG Frontend - Nepal Civic Sentiment Dashboard
 // Real-time structured sentiment analytics powered by backend
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -132,7 +132,7 @@ export default function SentimentPage({ articles }) {
   const [view, setView]         = useState('overview'); // overview | category | province | signals
 
   const loadReport = useCallback(async () => {
-    setLoading(true);
+    setLoading(prev => report === null ? true : prev);
     try {
       // Try backend first
       const res = await fetch(`${BACKEND}/api/sentiment?limit=400`, { signal: AbortSignal.timeout(4000) });
@@ -141,14 +141,9 @@ export default function SentimentPage({ articles }) {
         setLoading(false);
         return;
       }
-    } catch { /* backend offline, use client-side analysis */ }
-
-    // Client-side fallback: compute in-browser
-    const { computeSentimentReport } = await import('./sentimentClient.js');
-    const r = computeSentimentReport(articles);
-    setReport(r);
+    } catch (e) { console.error('Backend fetch failed', e); }
     setLoading(false);
-  }, [articles]);
+  }, [report]);
 
   useEffect(() => { loadReport(); }, [loadReport]);
 

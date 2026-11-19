@@ -9,7 +9,7 @@
 
 const SENTIMENT_LEXICON = {
 
-  // ── POLITICAL / GOVERNANCE ───────────────────────────────
+  // 🔴 POLITICAL / GOVERNANCE 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴
   'corruption':         -4, 'bribery':          -4, 'embezzlement':   -4,
   'nepotism':           -3, 'misuse of funds':  -4, 'irregularity':   -3,
   'scandal':            -3, 'impeachment':      -3, 'no-confidence':  -3,
@@ -20,19 +20,24 @@ const SENTIMENT_LEXICON = {
   'reform':             +2, 'transparency':     +3, 'accountability': +2,
   'election':           +1, 'democracy':        +2, 'constitutional': +1,
   'good governance':    +4, 'development plan': +3, 'budget approved':+3,
+  'भ्रष्टाचार': -4, 'घूस': -4, 'अनियमितता': -4,
+  'विरोध': -2, 'हडताल': -2, 'बन्द': -2,
+  'राजीनामा': -2, 'अविश्वास प्रस्ताव': -3, 'घोटाला': -3,
+  'सुशासन': +4, 'विकास': +3, 'सम्झौता': +3,
+  'पारदर्शिता': +2, 'निर्वाचन': +3, 'सहमति': +1,
 
-  // ── ECONOMY ──────────────────────────────────────────────
+  // 📈 ECONOMY 📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈
   'inflation':          -3, 'recession':        -4, 'deficit':        -2,
   'debt':               -2, 'unemployment':     -3, 'poverty':        -3,
   'trade deficit':      -3, 'depreciation':     -2, 'rupee fall':     -3,
   'liquidity crisis':   -4, 'bank collapse':    -5, 'tax hike':       -2,
   'smuggling':          -3, 'black market':     -3,
   'GDP growth':         +4, 'remittance':       +2, 'export growth':  +3,
+  'foreign investment': +3, 'hydropower':       +3, 'revenue increase':+3,
   'investment':         +3, 'FDI':              +3, 'foreign aid':    +2,
   'infrastructure':     +2, 'employment':       +3, 'surplus':        +3,
   'revenue growth':     +3, 'economic recovery':+4, 'tax relief':     +2,
   'hydropower export':  +4, 'trade surplus':    +4,
-
   // ── DISASTER / SAFETY ────────────────────────────────────
   'earthquake':         -5, 'flood':            -4, 'landslide':      -4,
   'casualty':           -5, 'killed':           -5, 'dead':           -5,

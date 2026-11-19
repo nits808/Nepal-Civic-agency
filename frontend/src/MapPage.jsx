@@ -1,8 +1,8 @@
 /**
- * MapPage.jsx — Nepal Intelligence Map v3
+ * MapPage.jsx — Nepal Intelligence Map v4
  *
- * ZERO external GeoJSON fetch — all province shapes use the
- * existing nepalMapPaths.js SVG paths baked into the build.
+ * ZERO external GeoJSON fetch — province shapes from nepalMapPaths.js,
+ * district shapes from nepalDistrictPaths.js (all 77 districts).
  * A CartoDB tile basemap provides beautiful terrain + city labels.
  * District-level stats populate the side panel and map dots.
  */
@@ -13,6 +13,7 @@ import {
   NEPAL_PROVINCE_PATHS,
   NEPAL_PROVINCE_CENTROIDS,
 } from './nepalMapPaths.js';
+import { NEPAL_DISTRICT_PATHS } from './nepalDistrictPaths.js';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -243,9 +244,9 @@ export function MapPage({ articles }) {
   const cats = ['all', ...Object.keys(CAT_ICONS).filter(c=>c!=='all')];
   const selStats = selected?.type==='district' ? distStats[selected.name] : provStats[selected?.name];
 
-  // ── Province SVG overlay data ──────────────────────────────────────────────
-  // Render as a separate SVG panel below the map header with province-level heatmap
-  const [svgMode, setSvgMode] = useState('svg'); // 'svg' | 'leaflet'
+  // ── Province SVG overlay data ─────────────────────────────────────────────
+  // 'province' | 'district' | 'leaflet'
+  const [svgMode, setSvgMode] = useState('district');
 
   const withAlpha = (hex, alpha) => {
     if (!hex || !hex.startsWith('#')) return hex;
@@ -264,7 +265,11 @@ export function MapPage({ articles }) {
       {/* ── View mode toggle ─────────────────────────────────────────────── */}
       <div style={{ display:'flex', gap:6, marginBottom:14, flexWrap:'wrap' }}>
         <div style={{ display:'flex', gap:3, background:'var(--bg-raised)', padding:3, borderRadius:8, border:'1px solid var(--border)' }}>
-          {[{id:'svg',label:'🗺️ Province Map'},{id:'leaflet',label:'📡 Live Tiles'}].map(m => (
+          {[
+            {id:'province', label:'🗺️ Province Map'},
+            {id:'district', label:'🏘️ District Map'},
+            {id:'leaflet',  label:'📡 Live Tiles'},
+          ].map(m => (
             <button key={m.id} onClick={() => setSvgMode(m.id)} style={{
               fontSize:'0.7rem', padding:'5px 12px', border:'none', cursor:'pointer',
               borderRadius:6, fontWeight:700, fontFamily:'Inter,sans-serif',
@@ -291,7 +296,7 @@ export function MapPage({ articles }) {
         {/* ── LEFT: Map panel ─────────────────────────────────────────────── */}
         <div className="map-panel" style={{ display:'flex', flexDirection:'column' }}>
 
-          {svgMode === 'svg' ? (
+          {(svgMode === 'province' || svgMode === 'district') ? (
             /* ── Province SVG choropleth ── */
             <div style={{ flex:1, position:'relative', minHeight:460, overflow:'hidden' }}>
               <svg
@@ -322,21 +327,34 @@ export function MapPage({ articles }) {
                 <text x="410" y="308" textAnchor="middle" fill="rgba(0,120,50,0.35)"
                   fontSize="6.5" fontFamily="Inter,sans-serif" letterSpacing="2">TERAI PLAINS</text>
 
-                {/* Province shapes */}
+                {/* ── Province outlines (always shown as base layer) ── */}
                 {PROVINCES.map(prov => {
+                  const pathD = NEPAL_PROVINCE_PATHS[prov.name];
+                  if (svgMode === 'district') {
+                    // Faint province borders as reference layer in district mode
+                    return (
+                      <path key={prov.code} d={pathD}
+                        fill="none"
+                        stroke={prov.color}
+                        strokeWidth="1.5"
+                        strokeDasharray="4 3"
+                        opacity="0.45"
+                      />
+                    );
+                  }
+                  // Full province choropleth (province mode)
                   const s     = provStats[prov.name] || { total:0, topCategory:null };
                   const t     = s.total / maxProv;
                   const isSel = selected?.name === prov.name;
                   const isHov = hovered === prov.name;
                   const c     = NEPAL_PROVINCE_CENTROIDS[prov.name];
-                  const pathD = NEPAL_PROVINCE_PATHS[prov.name];
                   const domColor = CAT_COLORS[s.topCategory] || prov.color;
 
                   const baseFill = viewMode==='dominant'
                     ? withAlpha(domColor, 0.20 + t*0.70)
                     : withAlpha(prov.color, 0.35 + t*0.55);
 
-                  const fillColor = isSel ? prov.color+'cc' : isHov ? prov.color+'99' : baseFill;
+                  const fillColor  = isSel ? prov.color+'cc' : isHov ? prov.color+'99' : baseFill;
                   const strokeColor = isSel||isHov ? prov.color : withAlpha(prov.color, 0.6);
 
                   return (
@@ -350,7 +368,7 @@ export function MapPage({ articles }) {
                         filter={isSel ? 'url(#provglow)' : undefined}
                         style={{ transition:'all 0.2s' }}/>
 
-                      {/* Pulse ring for high activity */}
+                      {/* Pulse ring */}
                       {s.total > 5 && c && (
                         <circle cx={c.x} cy={c.y} r={8+t*14} fill={prov.color} opacity="0.12">
                           <animate attributeName="r" from={6} to={14+t*16} dur="2.5s" repeatCount="indefinite"/>
@@ -358,14 +376,12 @@ export function MapPage({ articles }) {
                         </circle>
                       )}
 
-                      {/* Province dot */}
+                      {/* Province dot + labels */}
                       {c && (
                         <>
                           <circle cx={c.x} cy={c.y} r={isSel||isHov ? 7 : 5}
                             fill={prov.color} stroke="#fff" strokeWidth="1.5"
                             filter="url(#provglow)" style={{ transition:'r 0.2s' }}/>
-
-                          {/* Label */}
                           <text x={c.x} y={c.y-10} textAnchor="middle"
                             fill={isSel||isHov ? prov.color : '#1f2937'}
                             fontSize={isSel ? 8.5 : 7.5} fontFamily="Inter,sans-serif" fontWeight="800"
@@ -387,6 +403,86 @@ export function MapPage({ articles }) {
                           )}
                         </>
                       )}
+                    </g>
+                  );
+                })}
+
+                {/* ── District choropleth layer ── */}
+                {svgMode === 'district' && Object.entries(NEPAL_DISTRICT_PATHS).map(([dist, points]) => {
+                  const s      = distStats[dist] || { total:0, topCategory:null };
+                  const prov   = DIST_PROVINCE[dist] || 'Bagmati';
+                  const pColor = PROV_COLOR[prov] || '#64748b';
+                  const t      = s.total / Math.max(maxDist, 1);
+                  const isSel  = selected?.name === dist;
+                  const isHov  = hovered === dist;
+                  const domColor = CAT_COLORS[s.topCategory] || pColor;
+
+                  const alpha = s.total === 0 ? 0.06
+                    : viewMode === 'dominant'
+                    ? 0.25 + t * 0.65
+                    : 0.18 + t * 0.72;
+
+                  const fillCol = viewMode === 'dominant'
+                    ? withAlpha(domColor, alpha)
+                    : withAlpha(pColor, alpha);
+
+                  const fill   = isSel ? pColor + 'dd' : isHov ? pColor + 'bb' : fillCol;
+                  const stroke = isSel||isHov ? pColor : s.total > 0 ? withAlpha(pColor, 0.55) : 'rgba(100,116,139,0.2)';
+                  const sw     = isSel ? 2 : isHov ? 1.4 : 0.6;
+
+                  return (
+                    <g key={dist} style={{ cursor: s.total > 0 ? 'pointer' : 'default' }}
+                      onClick={() => {
+                        if (s.total === 0) return;
+                        setSelected(prev => prev?.name===dist&&prev.type==='district' ? null
+                          : { type:'district', name:dist, color:pColor, prov });
+                        setCatFilter('all');
+                      }}
+                      onMouseEnter={() => s.total > 0 && setHovered(dist)}
+                      onMouseLeave={() => setHovered(null)}>
+                      <polygon
+                        points={points}
+                        fill={fill}
+                        stroke={stroke}
+                        strokeWidth={sw}
+                        filter={isSel ? 'url(#provglow)' : undefined}
+                        style={{ transition:'fill 0.2s, stroke-width 0.2s' }}
+                      />
+                      {/* District label — only show for active + hovered/selected */}
+                      {(isSel || isHov) && (() => {
+                        const pts2 = points.split(' ').map(p => p.split(',').map(Number));
+                        const cx = pts2.reduce((a,p)=>a+p[0],0)/pts2.length;
+                        const cy = pts2.reduce((a,p)=>a+p[1],0)/pts2.length;
+                        return (
+                          <>
+                            <text x={cx} y={cy-2} textAnchor="middle"
+                              fill={pColor} fontSize="6" fontFamily="Inter,sans-serif" fontWeight="800"
+                              style={{ pointerEvents:'none' }}>
+                              {dist.length > 10 ? dist.slice(0,9)+'…' : dist}
+                            </text>
+                            {s.total > 0 && (
+                              <text x={cx} y={cy+7} textAnchor="middle"
+                                fill={pColor} fontSize="5.5" fontFamily="Inter,sans-serif" fontWeight="700"
+                                style={{ pointerEvents:'none' }}>
+                                {s.total}
+                              </text>
+                            )}
+                          </>
+                        );
+                      })()}
+                      {/* Count badge for active districts */}
+                      {s.total >= 3 && !isHov && !isSel && (() => {
+                        const pts2 = points.split(' ').map(p => p.split(',').map(Number));
+                        const cx = pts2.reduce((a,p)=>a+p[0],0)/pts2.length;
+                        const cy = pts2.reduce((a,p)=>a+p[1],0)/pts2.length;
+                        return (
+                          <text x={cx} y={cy+2} textAnchor="middle"
+                            fill="white" fontSize="5.5" fontFamily="Inter,sans-serif" fontWeight="900"
+                            style={{ pointerEvents:'none', textShadow:'0 1px 2px rgba(0,0,0,0.5)' }}>
+                            {s.total}
+                          </text>
+                        );
+                      })()}
                     </g>
                   );
                 })}

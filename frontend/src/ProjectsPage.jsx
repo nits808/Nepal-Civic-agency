@@ -7,13 +7,14 @@ import {
   mergeProjects,
 } from './projectData.js';
 
-const STATUSES = ['all','operating','construction','planning','ongoing'];
+const STATUSES = ['all','operating','construction','planning','ongoing','stalled'];
 
 const STATUS_META = {
   operating:    { label:'Operating',    color:'#059669', bg:'rgba(5,150,105,0.08)' },
   construction: { label:'Under Construction', color:'#d97706', bg:'rgba(217,119,6,0.08)' },
   planning:     { label:'Planning',     color:'#1a6aff', bg:'rgba(26,106,255,0.08)' },
   ongoing:      { label:'Ongoing',      color:'#7c3aed', bg:'rgba(124,58,237,0.08)' },
+  stalled:      { label:'Stalled / Delayed', color:'#dc2626', bg:'rgba(220,38,38,0.08)' },
 };
 
 export function ProjectsPage() {
@@ -23,6 +24,7 @@ export function ProjectsPage() {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [sector,   setSector]   = useState('all');
   const [status,   setStatus]   = useState('all');
+  const [priority, setPriority] = useState('all');
   const [search,   setSearch]   = useState('');
   const [selected, setSelected] = useState(null);
 
@@ -69,11 +71,12 @@ export function ProjectsPage() {
   const filtered = projects.filter(p => {
     const matchSector = sector === 'all' || p.sector === sector;
     const matchStatus = status === 'all' || p.status === status;
+    const matchPriority = priority === 'all' || p.priority === priority || (!p.priority && priority === 'Standard');
     const matchSearch = !search.trim() ||
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.district.toLowerCase().includes(search.toLowerCase()) ||
       p.province.toLowerCase().includes(search.toLowerCase());
-    return matchSector && matchStatus && matchSearch;
+    return matchSector && matchStatus && matchPriority && matchSearch;
   });
 
   const operating    = stats.operating;
@@ -103,6 +106,11 @@ export function ProjectsPage() {
           <div className="stat-icon">🔨</div>
           <div className="stat-val">{underConst}</div>
           <div className="stat-lbl">Under Construction</div>
+        </div>
+        <div className="stat-card" style={{ borderTopColor:'#dc2626' }}>
+          <div className="stat-icon">⚠️</div>
+          <div className="stat-val">{stats.stalled || 0}</div>
+          <div className="stat-lbl">Stalled Projects</div>
         </div>
         <div className="stat-card" style={{ borderTopColor:'#DC143C' }}>
           <div className="stat-icon">💵</div>
@@ -139,6 +147,18 @@ export function ProjectsPage() {
                 onClick={() => setSector(s)}
                 style={{ fontSize:'0.68rem', padding:'4px 10px' }}>
                 {s === 'all' ? 'All Sectors' : s}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+            {['all', 'National Pride', 'Strategic'].map(pr => (
+              <button key={pr} className={`chip ${priority===pr?'on':''}`}
+                onClick={() => setPriority(pr)}
+                style={{ fontSize:'0.68rem', padding:'4px 10px', 
+                  ...(pr === 'National Pride' ? { color:'#DC143C', borderColor: priority===pr ? '#DC143C' : '#DC143C40' } : {})
+                }}>
+                {pr === 'all' ? 'All Priorities' : pr}
               </button>
             ))}
           </div>
@@ -188,6 +208,13 @@ export function ProjectsPage() {
                       background:'var(--bg-raised)', borderRadius:6, border:'1px solid var(--border)' }}>
                       {proj.sector}
                     </span>
+                    {proj.priority === 'National Pride' && (
+                      <span style={{ fontSize:'0.62rem', fontWeight:700, padding:'2px 6px',
+                        background:'linear-gradient(90deg, #DC143C15, #1a6aff15)', color:'#DC143C', 
+                        borderRadius:6, border:'1px solid #DC143C40' }}>
+                        🇳🇵 National Pride
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ textAlign:'right', flexShrink:0 }}>
