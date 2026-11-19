@@ -2,6 +2,7 @@ import React, { useMemo, useState as useStateInner, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell } from 'recharts';
 import { CAT_COLORS, CAT_ICONS, RSS_FEEDS, FEED_TYPES, PROVINCES } from './data.js';
+import { API_BASE_URL } from './config.js';
 
 // ─────────────────────────────────────────────────────────────────
 // STORY CLUSTERING UTILITIES
@@ -424,7 +425,7 @@ export function AnalyticsPage({ articles, feedStatus = {} }) {
   const [tab, setTab] = React.useState('overview');
   const [clusters, setClusters] = React.useState([]);
   React.useEffect(() => {
-    fetch('http://localhost:4000/api/clusters?limit=500').then(r=>r.json()).then(d=>setClusters(d.clusters||[])).catch(e=>console.error(e));
+    fetch(`${API_BASE_URL}/api/clusters?limit=500`).then(r=>r.json()).then(d=>setClusters(d.clusters||[])).catch(e=>console.error(e));
   }, []);
 
   const catData = useMemo(() => {

@@ -218,6 +218,52 @@ cron.schedule('0 0 * * *', () => {
   console.log(`[Cron] Purged ${deleted} old articles`);
 });
 
+// GET /api/rss — CORS proxy for client-side RSS feeds
+app.get('/api/rss', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).send('Missing url parameter');
+
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return res.status(400).send('Invalid URL');
+    }
+
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return res.status(403).send('Forbidden protocol');
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '::1' ||
+      host.startsWith('10.') ||
+      host.startsWith('192.168.') ||
+      host.startsWith('169.254.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)
+    ) {
+      return res.status(403).send('Access to private network denied');
+    }
+
+    const fetchRes = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; NCIG-Bot/3.0)',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    const text = await fetchRes.text();
+    res.setHeader('Content-Type', fetchRes.headers.get('content-type') || 'application/xml');
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    return res.status(fetchRes.status).send(text);
+  } catch (err) {
+    return res.status(500).send(`Proxy Error: ${err.message}`);
+  }
+});
+
 // ── Start Server ─────────────────────────────────────────────
 httpServer.listen(PORT, async () => {
   console.log(`
@@ -246,3 +292,5 @@ function gracefulShutdown(signal) {
 }
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+
+export default app;
