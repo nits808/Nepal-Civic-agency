@@ -43,13 +43,26 @@ async function fetchFeed(feed) {
   
   let targetUrl = feed.url;
   if (targetUrl.includes('youtube.com/channel/')) {
-      const channelId = targetUrl.split('channel/')[1].split('/')[0].split('?')[0];
-      targetUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+    const channelId = targetUrl.split('channel/')[1].split('/')[0].split('?')[0];
+    targetUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+  } else if (targetUrl.includes('youtube.com/@') && !targetUrl.includes('videos.xml')) {
+    try {
+      const ytRes = await fetch(targetUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: AbortSignal.timeout(4000)
+      });
+      const html = await ytRes.text();
+      const m = html.match(/channel_id=([a-zA-Z0-9_-]+)/) ||
+                html.match(/"channelId":"(UC[a-zA-Z0-9_-]+)"/) ||
+                html.match(/"externalId":"(UC[a-zA-Z0-9_-]+)"/) ||
+                html.match(/"browseId":"(UC[a-zA-Z0-9_-]+)"/);
+      if (m) targetUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${m[1]}`;
+    } catch (_) {}
   } else if (!targetUrl.includes('.xml') && !targetUrl.includes('/rss') && !targetUrl.includes('/feed') && !targetUrl.includes('youtube.com')) {
-      try {
-          const domain = new URL(targetUrl).hostname.replace('www.', '');
-          targetUrl = `https://news.google.com/rss/search?q=site:${domain}`;
-      } catch(e){}
+    try {
+      const domain = new URL(targetUrl).hostname.replace('www.', '');
+      targetUrl = `https://news.google.com/rss/search?q=site:${domain}+when:7d&hl=en-NP&gl=NP&ceid=NP:en`;
+    } catch(e){}
   }
   
   const ctrl = new AbortController();
@@ -181,9 +194,10 @@ export async function enrichArticlesWithOgImages(articles) {
     needsImage.map(async (article) => {
       const ogImage = await fetchOgImage(article.link);
       if (ogImage) {
-        getDB()
-          .prepare('UPDATE articles SET og_image = ?, image_url = ? WHERE id = ?')
-          .run(ogImage, ogImage, article.id);
+        await getDB().execute({
+          sql: 'UPDATE articles SET og_image = ?, image_url = ? WHERE id = ?',
+          args: [ogImage, ogImage, article.id]
+        });
       }
     })
   );

@@ -136,7 +136,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case 'dashboard': return <DashboardPage articles={articles} loading={loading} lastUpdated={lastUpdated} refetch={refetch} progress={progress} totalFeeds={totalFeeds} />;
-      case 'sources':   return <SourceManager feedStatus={feedStatus} />;
+      case 'sources':   return <SourceManager feedStatus={feedStatus} onSourceAdded={refetch} />;
       case 'map':       return <MapPage articles={articles} />;
       case 'projects':  return <ProjectsPage />;
       case 'analytics': return <AnalyticsPage articles={articles} feedStatus={feedStatus} />;

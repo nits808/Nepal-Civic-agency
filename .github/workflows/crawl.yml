@@ -2,8 +2,8 @@ name: 24/7 Autonomous News Crawler
 
 on:
   schedule:
-    # Runs every 30 minutes (48 times/day)
-    - cron: '*/30 * * * *'
+    # Runs twice per hour at :17 and :47 (avoids GitHub top-of-hour queue congestion)
+    - cron: '17,47 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
 concurrency:

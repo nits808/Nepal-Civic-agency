@@ -137,7 +137,7 @@ function TierSection({ tier, feeds, feedStatus, search, activeType }) {
 // ═══════════════════════════════════════════════════════════════
 // Source Discovery Engine — Main Page
 // ═══════════════════════════════════════════════════════════════
-export default function SourceManager({ feedStatus = {} }) {
+export default function SourceManager({ feedStatus = {}, onSourceAdded }) {
   const [sourcesList, setSourcesList] = useState(RSS_FEEDS);
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState(null);
@@ -198,6 +198,7 @@ export default function SourceManager({ feedStatus = {} }) {
 
       setSourcesList(prev => [data.source, ...prev.filter(s => s.id !== data.source.id)]);
       setPasteUrl('');
+      if (onSourceAdded) onSourceAdded();
     } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
@@ -307,16 +308,20 @@ export default function SourceManager({ feedStatus = {} }) {
             type="submit"
             disabled={isSubmitting}
             style={{
-              padding: '9px 20px',
-              background: 'var(--accent)',
-              color: '#fff',
+              padding: '9px 22px',
+              background: isSubmitting ? '#9ca3af' : 'var(--crimson, #DC143C)',
+              color: '#ffffff',
               border: 'none',
               borderRadius: 6,
               fontWeight: 700,
               fontSize: '0.88rem',
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              opacity: isSubmitting ? 0.7 : 1,
-              whiteSpace: 'nowrap'
+              boxShadow: isSubmitting ? 'none' : '0 2px 8px rgba(220, 20, 60, 0.35)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease'
             }}>
             {isSubmitting ? 'Resolving...' : '+ Add & Ingest Source'}
           </button>

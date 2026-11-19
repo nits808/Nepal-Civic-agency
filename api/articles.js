@@ -89,9 +89,6 @@ export default async function handler(req, res) {
       total: enriched.length,
       timestamp: new Date().toISOString()
     });
-      total: enriched.length,
-      timestamp: new Date().toISOString()
-    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

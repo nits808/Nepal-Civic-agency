@@ -69,6 +69,14 @@ function parseFeedXml(xml, feed) {
     const category = classify(fullText);
     const province = detectProvince(fullText, feed.province || 'National');
 
+    let isoDate;
+    try {
+      const pd = new Date(pubDate);
+      isoDate = isNaN(pd.getTime()) ? new Date().toISOString() : pd.toISOString();
+    } catch {
+      isoDate = new Date().toISOString();
+    }
+
     items.push({
       id,
       title,
@@ -77,7 +85,7 @@ function parseFeedXml(xml, feed) {
       category,
       district: feed.province || 'Kathmandu',
       province,
-      date: new Date(pubDate).toISOString(),
+      date: isoDate,
       time_ago: 'recently',
       source: feed.name,
       feed_type: feed.type || 'media',
