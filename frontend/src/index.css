@@ -651,7 +651,7 @@ body::before {
 .topbar-search { flex:1; max-width:440px; position:relative; }
 .topbar-search input {
   width: 100%;
-  padding: 8px 14px 8px 36px;
+  padding: 8px 48px 8px 36px;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--r);
@@ -663,14 +663,24 @@ body::before {
 }
 .topbar-search input::placeholder { color: var(--text-4); }
 .topbar-search input:focus {
-  border-color: var(--crimson);
-  box-shadow: 0 0 0 3px rgba(220,20,60,0.1);
-  background: white;
+  border-color: var(--royal);
+  box-shadow: 0 0 0 3px rgba(0,56,147,0.15);
+  background: var(--bg-surface);
 }
 .topbar-search .ico {
   position:absolute; left:11px; top:50%;
   transform:translateY(-50%);
   color:var(--text-4); font-size:0.85rem; pointer-events:none;
+}
+.topbar-search .cmd-kbd {
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.65rem; font-weight: 700;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  pointer-events: none;
 }
 
 .live-pill {
