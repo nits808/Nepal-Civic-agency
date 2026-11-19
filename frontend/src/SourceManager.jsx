@@ -262,7 +262,7 @@ export default function SourceManager({ feedStatus = {}, onSourceAdded }) {
       </div>
 
       {/* ── Link Paste & Source Ingestion Bar ─────────────────────── */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, border: '1px solid var(--border)', background: 'var(--bg-2)' }}>
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, border: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: '1.2rem' }}>🔗</span>
           <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Paste YouTube Channel or News Website Link</span>
@@ -282,7 +282,7 @@ export default function SourceManager({ feedStatus = {}, onSourceAdded }) {
               padding: '9px 14px',
               borderRadius: 6,
               border: '1px solid var(--border)',
-              background: 'var(--bg-3)',
+              background: 'var(--bg-raised)',
               color: 'var(--text-1)',
               fontSize: '0.9rem'
             }}
@@ -295,7 +295,7 @@ export default function SourceManager({ feedStatus = {}, onSourceAdded }) {
               padding: '9px 12px',
               borderRadius: 6,
               border: '1px solid var(--border)',
-              background: 'var(--bg-3)',
+              background: 'var(--bg-raised)',
               color: 'var(--text-1)',
               fontSize: '0.85rem'
             }}>
@@ -307,16 +307,17 @@ export default function SourceManager({ feedStatus = {}, onSourceAdded }) {
           <button
             type="submit"
             disabled={isSubmitting}
+            className="sm-submit-btn"
             style={{
-              padding: '9px 22px',
-              background: isSubmitting ? '#9ca3af' : 'var(--crimson, #DC143C)',
+              padding: '10px 24px',
+              background: isSubmitting ? '#9ca3af' : '#dc2626',
               color: '#ffffff',
-              border: 'none',
+              border: '1px solid #b91c1c',
               borderRadius: 6,
               fontWeight: 700,
               fontSize: '0.88rem',
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              boxShadow: isSubmitting ? 'none' : '0 2px 8px rgba(220, 20, 60, 0.35)',
+              boxShadow: isSubmitting ? 'none' : '0 2px 8px rgba(220, 38, 38, 0.4)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
