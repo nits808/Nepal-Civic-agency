@@ -181,6 +181,24 @@ export async function queryArticles({ limit = 200, offset = 0, category, provinc
   return res.rows;
 }
 
+// ── Lookup articles by IDs ──────────────────────────────────
+export async function lookupArticlesByIds(ids = []) {
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  const cleanIds = ids
+    .filter(id => id && typeof id === 'string' && id.trim().length > 0)
+    .map(id => id.trim())
+    .slice(0, 100);
+  if (cleanIds.length === 0) return [];
+
+  const db = getDB();
+  const placeholders = cleanIds.map(() => '?').join(',');
+  const res = await db.execute({
+    sql: `SELECT * FROM articles WHERE id IN (${placeholders})`,
+    args: cleanIds
+  });
+  return res.rows;
+}
+
 // ── Get feed statuses ────────────────────────────────────────
 export async function getFeedStatuses() {
   const res = await getDB().execute('SELECT * FROM feed_status ORDER BY feed_name');

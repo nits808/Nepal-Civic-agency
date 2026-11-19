@@ -10,7 +10,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import cron from 'node-cron';
-import { initDB, queryArticles, getFeedStatuses, getStats, purgeOldArticles, getAllSources, upsertSources } from './db.js';
+import { initDB, queryArticles, lookupArticlesByIds, getFeedStatuses, getStats, purgeOldArticles, getAllSources, upsertSources } from './db.js';
 import { fetchAllFeeds, enrichArticlesWithOgImages } from './fetcher.js';
 import { computeSentimentReport } from './sentiment.js';
 import { clusterAndFlatten, clusterArticles } from './clustering.js';
@@ -96,6 +96,54 @@ app.get('/api/articles', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/articles/lookup — batch lookup articles by exact IDs
+app.post(['/api/articles/lookup', '/api/articles'], async (req, res) => {
+  try {
+    const rawIds = req.body?.article_ids || req.body?.ids || [];
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    const articles = await lookupArticlesByIds(ids);
+
+    const now = Date.now();
+    const enriched = articles.map(a => {
+      const mins = Math.floor((now - new Date(a.date).getTime()) / 60000);
+      let timeAgo = 'recently';
+      if (!isNaN(mins) && mins >= 0) {
+        if (mins < 1) timeAgo = 'just now';
+        else if (mins < 60) timeAgo = `${mins}m ago`;
+        else if (mins < 1440) timeAgo = `${Math.floor(mins / 60)}h ago`;
+        else timeAgo = `${Math.floor(mins / 1440)}d ago`;
+      }
+
+      let cleanDesc = (a.description || '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+      if (!cleanDesc || cleanDesc === a.source || cleanDesc.includes('news.google.com') || cleanDesc.length < 15) {
+        cleanDesc = `${(a.title || '').split(' - ')[0].trim()} — Read full coverage on ${a.source || 'News'}.`;
+      }
+
+      return {
+        ...a,
+        description: cleanDesc,
+        timeAgo,
+        imageUrl: a.og_image || a.image_url || `/images/${a.category || 'politics'}-fallback.svg`,
+        hasRealImage: !!(a.og_image || a.image_url),
+      };
+    });
+
+    res.json({
+      ok: true,
+      count: enriched.length,
+      articles: enriched,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 

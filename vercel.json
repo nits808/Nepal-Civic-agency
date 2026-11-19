@@ -9,6 +9,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/articles/lookup", "destination": "/api/articles-lookup.js" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
