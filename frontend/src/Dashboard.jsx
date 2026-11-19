@@ -257,6 +257,21 @@ function OverviewTab({ articles, loading, stats }) {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
   const [viewMode, setViewMode] = useState('feature'); // 'feature' | 'compact'
+  const [selectedSource, setSelectedSource] = useState('all');
+
+  const catArticles = useMemo(() => {
+    if (category === 'provincial') return articles.filter(a => a.province && a.province !== 'National' && a.province !== 'International');
+    if (category === 'all') return articles;
+    return articles.filter(a => a.category === category);
+  }, [articles, category]);
+
+  const sourceCounts = useMemo(() => {
+    const m = {};
+    catArticles.forEach(a => {
+      if (a.source) m[a.source] = (m[a.source] || 0) + 1;
+    });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }, [catArticles]);
 
   const filtered = useMemo(() => {
     let r = articles;
@@ -265,23 +280,21 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
     } else if (category !== 'all') {
       r = articles.filter(a => a.category === category);
     }
+    if (selectedSource !== 'all') {
+      r = r.filter(a => a.source === selectedSource);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(a =>
         (a.title || '').toLowerCase().includes(q) ||
-        (a.description || '').toLowerCase().includes(q));
+        (a.description || '').toLowerCase().includes(q) ||
+        (a.source || '').toLowerCase().includes(q));
     }
     return r;
-  }, [articles, category, search]);
+  }, [articles, category, selectedSource, search]);
 
   const catColor = category === 'provincial' ? '#f59e0b' : (CAT_COLORS[category] || '#1a6aff');
   const catIcon  = category === 'provincial' ? '📍' : (CAT_ICONS[category] || '📄');
-
-  const catArticles = useMemo(() => {
-    if (category === 'provincial') return articles.filter(a => a.province && a.province !== 'National' && a.province !== 'International');
-    if (category === 'all') return articles;
-    return articles.filter(a => a.category === category);
-  }, [articles, category]);
 
   const topProvince = useMemo(() => {
     const m = {};
@@ -380,8 +393,42 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
         </div>
 
         <input className="search-input"
-          placeholder={`🔍 Search ${category==='all'?'all news':category+' news'}...`}
+          placeholder={`🔍 Search ${category==='all'?'all news':category+' news'}... (or search by outlet e.g. TechPana)`}
           value={search} onChange={e => setSearch(e.target.value)}/>
+
+        {/* Source Filter Pills Bar */}
+        {sourceCounts.length > 1 && (
+          <div style={{
+            display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 0 10px',
+            scrollbarWidth: 'none', borderBottom: '1px solid var(--border)', marginBottom: 10
+          }}>
+            <button
+              onClick={() => setSelectedSource('all')}
+              style={{
+                padding: '4px 10px', borderRadius: 14, fontSize: '0.72rem', fontWeight: 700,
+                border: selectedSource === 'all' ? `1px solid ${catColor}` : '1px solid var(--border)',
+                background: selectedSource === 'all' ? catColor : 'var(--bg-raised)',
+                color: selectedSource === 'all' ? '#ffffff' : 'var(--text-2)',
+                cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.12s'
+              }}>
+              All Sources ({catArticles.length})
+            </button>
+            {sourceCounts.map(([src, count]) => (
+              <button
+                key={src}
+                onClick={() => setSelectedSource(selectedSource === src ? 'all' : src)}
+                style={{
+                  padding: '4px 10px', borderRadius: 14, fontSize: '0.72rem', fontWeight: 600,
+                  border: selectedSource === src ? `1px solid ${catColor}` : '1px solid var(--border)',
+                  background: selectedSource === src ? `${catColor}20` : 'var(--bg-raised)',
+                  color: selectedSource === src ? catColor : 'var(--text-3)',
+                  cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.12s'
+                }}>
+                {src} <span style={{ opacity: 0.7, fontSize: '0.65rem' }}>({count})</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className={`feed${viewMode==='compact'?' feed-compact-list':''}`}
           style={{ maxHeight: viewMode==='compact' ? 700 : 580 }}>

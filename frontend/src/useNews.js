@@ -9,7 +9,7 @@ import { API_BASE_URL, WS_BASE_URL } from './config.js';
 
 const BACKEND_URL  = API_BASE_URL;
 const WS_URL       = WS_BASE_URL;
-const CACHE_KEY    = 'ncig_v4_cache';
+const CACHE_KEY    = 'ncig_v5_cache';
 const CACHE_TTL    = 9 * 60_000;       // 9 min cache (aligns with 10 min refresh)
 const REFRESH_MS   = 60_000;          // 60-second SWR background polling
 const TIMEOUT_MS   = 15000;
@@ -30,7 +30,7 @@ function readCache() {
 function writeCache(articles, feedStatus, source = 'backend') {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
-      ts: Date.now(), articles: articles.slice(0, 600), feedStatus, source,
+      ts: Date.now(), articles: articles.slice(0, 1000), feedStatus, source,
     }));
   } catch { /* quota */ }
 }
@@ -56,7 +56,7 @@ async function checkBackend() {
 
 // -- Fetch from backend ---------------------------------------
 async function fetchFromBackend() {
-  const r = await fetch(`${BACKEND_URL}/api/articles?limit=400`, {
+  const r = await fetch(`${BACKEND_URL}/api/articles?limit=1000`, {
     headers: { 'Accept': 'application/json' },
   });
   if (!r.ok) throw new Error(`Backend HTTP ${r.status}`);

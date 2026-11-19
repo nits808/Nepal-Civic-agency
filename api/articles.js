@@ -9,16 +9,20 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { limit = 400, offset = 0, category, province, search } = req.query;
+  const { limit = 800, offset = 0, category, province, search, source } = req.query;
 
   try {
     const db = getTursoClient();
     let query = 'SELECT * FROM articles WHERE 1=1';
     const args = [];
 
+    if (source) {
+      query += ' AND source = ?';
+      args.push(source);
+    }
     if (search) {
-      query += ' AND (title LIKE ? OR description LIKE ?)';
-      args.push(`%${search}%`, `%${search}%`);
+      query += ' AND (title LIKE ? OR description LIKE ? OR source LIKE ?)';
+      args.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (category) {
       query += ' AND category = ?';
@@ -30,7 +34,7 @@ export default async function handler(req, res) {
     }
 
     query += ' ORDER BY date DESC LIMIT ? OFFSET ?';
-    args.push(Math.min(parseInt(limit) || 400, 600), parseInt(offset) || 0);
+    args.push(Math.min(parseInt(limit) || 800, 1200), parseInt(offset) || 0);
 
     const [articlesRes, statusRes] = await Promise.all([
       db.execute({ sql: query, args }),
