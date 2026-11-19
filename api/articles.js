@@ -67,7 +67,7 @@ export default async function handler(req, res) {
         ...a,
         description: cleanDesc,
         timeAgo,
-        imageUrl: a.og_image || a.image_url || null,
+        imageUrl: a.og_image || a.image_url || `/images/${a.category || 'politics'}-fallback.svg`,
         hasRealImage: !!(a.og_image || a.image_url),
       };
     });

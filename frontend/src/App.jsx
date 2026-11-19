@@ -331,15 +331,11 @@ export default function App() {
               <span className="hamburger-bar" />
             </button>
 
-            <div className="topbar-search">
+            <div className="topbar-search" onClick={() => setCmdOpen(true)} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
               <span className="ico">🔍</span>
-              <input placeholder="Search… (or press ⌘K)" readOnly
-                onClick={() => setCmdOpen(true)} style={{ cursor: 'pointer' }} />
+              <input placeholder="Search news, topics, sources… (⌘K)" readOnly style={{ cursor: 'pointer' }} />
+              <span className="cmd-kbd desktop-only">⌘K</span>
             </div>
-
-            <button className="cmd-palette-btn desktop-only" onClick={() => setCmdOpen(true)}>
-              🔍 Search <span className="cmd-kbd">⌘K</span>
-            </button>
 
             <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
               {!loading && [

@@ -5,6 +5,12 @@ on:
     # Runs twice per hour at :17 and :47 (avoids GitHub top-of-hour queue congestion)
     - cron: '17,47 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/crawl.yml'
 
 concurrency:
   group: ncig-crawler

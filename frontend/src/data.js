@@ -69,35 +69,44 @@ export const FALLBACK_IMAGES = {
 // Fallback logic
 export function fallbackImageUrl(article) {
   const cat = article?.category || 'politics';
-  return FALLBACK_IMAGES[cat] || FALLBACK_IMAGES.politics;
+  return FALLBACK_IMAGES[cat] || FALLBACK_IMAGES.politics || '/images/default-fallback.svg';
 }
 
 /**
  * resolveArticleImage — always returns { url, type }
- * type = 'rss' if from feed XML, 'contextual' if from photo DB
+ * type = 'rss' if from feed XML or crawler, 'editorial' if using curated Nepal category banner
  */
 export function resolveArticleImage(article) {
-  // Tier 1: Real image extracted from the RSS feed XML
-  if (article.hasRealImage && article.imageUrl && _isValidImageUrl(article.imageUrl)) {
-    return { url: article.imageUrl, type: 'rss' };
+  if (!article) {
+    return { url: FALLBACK_IMAGES.politics, type: 'editorial' };
   }
 
-  // No stock fallback: only real article images should be shown
-  return { url: null, type: 'none' };
+  // Tier 1: Real image extracted from the RSS feed XML, og:image or crawler
+  const rawUrl = article.imageUrl || article.image_url || article.og_image;
+  if (rawUrl && _isValidImageUrl(rawUrl)) {
+    return { url: rawUrl, type: 'rss' };
+  }
+
+  // Tier 2: Curated Nepal editorial category photography banner
+  const cat = article.category || 'politics';
+  const fallback = FALLBACK_IMAGES[cat] || FALLBACK_IMAGES.politics || '/images/default-fallback.svg';
+  return { url: fallback, type: 'editorial' };
 }
-
-
 
 function _isValidImageUrl(url) {
   if (!url || typeof url !== 'string') return false;
   if (url.startsWith('data:')) return false;
   if (/1x1|pixel|spacer|tracking|blank/i.test(url)) return false;
-  if (!url.startsWith('http')) return false;
-  return /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) ||
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
+  return /\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i.test(url) ||
     url.includes('images.unsplash.com') ||
     url.includes('cdn.') ||
     url.includes('/photo') ||
-    url.includes('img.');
+    url.includes('img.') ||
+    url.includes('media.') ||
+    url.includes('upload') ||
+    url.includes('wp-content') ||
+    url.includes('ytimg.com');
 }
 
 

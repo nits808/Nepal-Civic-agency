@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#052e16" />
+      <stop offset="50%" stop-color="#14532d" />
+      <stop offset="100%" stop-color="#16a34a" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="0" />
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="450" fill="url(#bgGrad)" />
+  <rect width="800" height="450" fill="url(#grid)" />
+  <circle cx="700" cy="80" r="280" fill="url(#glowGrad)" filter="blur(40px)" />
+  <circle cx="100" cy="400" r="200" fill="url(#glowGrad)" filter="blur(50px)" />
+
+  <!-- Diagonal Geometric Accent Lines -->
+  <line x1="-50" y1="450" x2="450" y2="-50" stroke="#22c55e" stroke-opacity="0.12" stroke-width="2" />
+  <line x1="50" y1="500" x2="550" y2="0" stroke="#22c55e" stroke-opacity="0.08" stroke-width="1.5" />
+
+  <!-- Emblem Box & Category Watermark -->
+  <g transform="translate(60, 110)">
+    <!-- Watermark Big Icon -->
+    <text x="520" y="240" font-size="200" opacity="0.12" text-anchor="center">🌿</text>
+
+    <!-- Badge -->
+    <rect x="0" y="0" width="160" height="34" rx="17" fill="#22c55e" fill-opacity="0.2" stroke="#22c55e" stroke-opacity="0.5" stroke-width="1.5" />
+    <text x="20" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" fill="#22c55e" letter-spacing="1.5">NEPAL CIVIC</text>
+
+    <!-- Large Icon -->
+    <text x="0" y="105" font-size="56">🌿</text>
+
+    <!-- Main Title -->
+    <text x="0" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="900" fill="#ffffff" letter-spacing="0.5">CLIMATE & ENVIRONMENT</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="200" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="500" fill="#94a3b8" letter-spacing="0.2">Conservation • Forest Resources • Climate Resilience</text>
+
+    <!-- Bottom Metadata Bar -->
+    <line x1="0" y1="235" x2="680" y2="235" stroke="rgba(255,255,255,0.12)" stroke-width="1" />
+    <text x="0" y="260" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#64748b" letter-spacing="1">AUTHENTIC VERIFIED INTELLIGENCE • NCIG</text>
+  </g>
+</svg>

@@ -70,8 +70,8 @@ export function FeedItem({ article, compact = false }) {
   const combinedText = (article.title || '') + ' ' + (summary || '');
   const isBreaking = ageMin < 90 && urgentKw.test(combinedText);
 
-  // Only show image if it's a real RSS-extracted image (no stock photos)
-  const hasImg = article.hasRealImage && img.url;
+  // All articles get a real image or high-res Nepal editorial category banner
+  const hasImg = Boolean(img && img.url);
   const verified = isSourceVerified(article.source);
 
   // -- COMPACT mode - MyRepublica "Latest" style high-density list --
@@ -143,24 +143,13 @@ export function FeedItem({ article, compact = false }) {
         </div>
       </div>
 
-      {/* Right: real image with category badge, or elegant text-card */}
-      {hasImg ? (
-        <div className="feed-thumb" style={{ backgroundImage:`url(${img.url})` }}>
-          {/* Online Khabar style: category overlaid on image */}
-          <div className="feed-img-cat-badge" style={{ background: clr }}>
-            {CAT_ICONS[c]} {c}
-          </div>
-          <div className="feed-thumb-overlay" />
+      {/* Right: 16:9 news thumbnail with category badge */}
+      <div className="feed-thumb" style={{ backgroundImage:`url(${img.url || '/images/default-fallback.svg'})` }}>
+        <div className="feed-img-cat-badge" style={{ background: clr }}>
+          {CAT_ICONS[c]} {c}
         </div>
-      ) : (
-        /* KP Opinion style: styled text tile - NO fake stock photos */
-        <div className="feed-text-card"
-          style={{ background:`linear-gradient(135deg,${clr}18,${clr}05)`, borderLeft:`3px solid ${clr}40` }}>
-          <div className="feed-text-card-icon">{CAT_ICONS[c] || '📰'}</div>
-          <div className="feed-text-card-cat" style={{ color: clr }}>{c.toUpperCase()}</div>
-          <div className="feed-text-card-src">{srcInitials(article.source)}</div>
-        </div>
-      )}
+        <div className="feed-thumb-overlay" />
+      </div>
     </a>
   );
 }
@@ -375,18 +364,18 @@ function CategoryNewsTab({ articles, loading, category, search, setSearch }) {
               {loading ? '⏳ Fetching...' : `${catArticles.length} total`}
             </span>
             {/* View Mode Toggle - Feature / Compact */}
-            <div className="view-toggle">
+            <div className="view-toggle" role="group" aria-label="View layout switch">
               <button
                 className={`view-toggle-btn${viewMode==='feature'?' active':''}`}
                 onClick={() => setViewMode('feature')}
                 title="Feature cards - image + summary">
-                GRID
+                <span className="view-toggle-icon">⊞</span> Grid
               </button>
               <button
                 className={`view-toggle-btn${viewMode==='compact'?' active':''}`}
                 onClick={() => setViewMode('compact')}
                 title="Compact list - high density">
-                LIST
+                <span className="view-toggle-icon">☰</span> List
               </button>
             </div>
           </div>

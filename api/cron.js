@@ -103,7 +103,7 @@ async function fetchFeed(feed) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NCIG-Bot/4.0',
         'Accept': 'application/rss+xml, application/xml, text/xml, */*'
       },
-      signal: AbortSignal.timeout(7000)
+      signal: AbortSignal.timeout(3500)
     });
     if (!res.ok) return [];
     const xml = await res.text();
@@ -129,7 +129,7 @@ export default async function handler(req, res) {
     let totalParsed = 0;
     let totalInserted = 0;
 
-    const BATCH_SIZE = 8;
+    const BATCH_SIZE = 16;
     for (let i = 0; i < allFeeds.length; i += BATCH_SIZE) {
       const chunk = allFeeds.slice(i, i + BATCH_SIZE);
       const results = await Promise.all(chunk.map(f => fetchFeed(f)));
