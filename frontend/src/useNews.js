@@ -44,7 +44,10 @@ async function checkBackend() {
   try {
     const r = await fetch(`${BACKEND_URL}/api/health`, { signal: ctrl.signal });
     clearTimeout(timer);
-    return r.ok;
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || !ct.includes('application/json')) return false;
+    const data = await r.json();
+    return Boolean(data?.status === 'ok' && data?.service === 'ncig-backend');
   } catch {
     clearTimeout(timer);
     return false;

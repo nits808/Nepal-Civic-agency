@@ -471,7 +471,6 @@ body::before {
   width: auto;
   margin-bottom: 8px;
   display: block;
-  mix-blend-mode: multiply;
   filter: drop-shadow(0 2px 4px rgba(220,20,60,0.15));
 }
 

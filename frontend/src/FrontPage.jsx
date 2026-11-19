@@ -115,7 +115,7 @@ export default function FrontPage({ articles, loading, setPage, backendOnline })
     <div className="frontpage-wrapper">
       <header className="front-header">
         <div className="front-logo">
-          <img className="logo-flag" src="https://giwmscdntwo.gov.np/static/grapejs/img/Nepal-flag.gif" alt="Nepal Flag" />
+          <img className="logo-flag" src="/nepal-flag.svg" alt="Nepal Flag" />
           <div className="logo-title">
             <span className="logo-main">Nepal Civic Intelligence</span>
             <span className="logo-sub">Public Information Portal</span>

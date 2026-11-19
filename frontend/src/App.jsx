@@ -151,7 +151,7 @@ export default function App() {
   const SidebarContent = ({ onNavigate }) => (
     <>
       <div className="sidebar-logo">
-        <img className="logo-flag" src="https://giwmscdntwo.gov.np/static/grapejs/img/Nepal-flag.gif" alt="Nepal Flag" />
+        <img className="logo-flag" src="/nepal-flag.svg" alt="Nepal Flag" />
         <div className="logo-text">Civic Intelligence Graph</div>
         <div className="logo-sub">v4.0&nbsp;&middot;&nbsp;{clock.toLocaleTimeString('en-US')}</div>
       </div>
