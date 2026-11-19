@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { RSS_FEEDS, FEED_TYPES, TIER_META } from './data.js';
+import { API_BASE_URL } from './config.js';
 
 // ── Province color map ───────────────────────────────────────
 const PROV_COLORS = {
@@ -93,7 +94,7 @@ function SourceCard({ feed, feedStatus }) {
 
 // ── Tier section ─────────────────────────────────────────────
 function TierSection({ tier, feeds, feedStatus, search, activeType }) {
-  const meta = TIER_META[tier];
+  const meta = TIER_META[tier] || { color: '#6b7280', icon: '📁', label: `Tier ${tier}`, desc: 'Sources' };
   const filtered = useMemo(() => feeds.filter(f => {
     const matchSearch = !search || f.name.toLowerCase().includes(search.toLowerCase())
       || (f.province || '').toLowerCase().includes(search.toLowerCase());
@@ -136,31 +137,94 @@ function TierSection({ tier, feeds, feedStatus, search, activeType }) {
 // ═══════════════════════════════════════════════════════════════
 // Source Discovery Engine — Main Page
 // ═══════════════════════════════════════════════════════════════
-export default function SourceManager({ feedStatus }) {
+export default function SourceManager({ feedStatus = {} }) {
+  const [sourcesList, setSourcesList] = useState(RSS_FEEDS);
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState(null);
-  const [activeProvince, setActiveProvince] = useState(null);
+
+  // Link Paste Form State
+  const [pasteUrl, setPasteUrl] = useState('');
+  const [pasteProvince, setPasteProvince] = useState('National');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  // Fetch dynamic sources from Turso/backend on mount
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/sources`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.sources) && data.sources.length > 0) {
+          const merged = [...data.sources];
+          const existingIds = new Set(data.sources.map(s => s.id));
+          RSS_FEEDS.forEach(f => {
+            if (!existingIds.has(f.id)) merged.push(f);
+          });
+          setSourcesList(merged);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Handle URL Paste & Ingestion
+  const handleAddSource = async (e) => {
+    e.preventDefault();
+    if (!pasteUrl || !pasteUrl.trim().startsWith('http')) {
+      setFeedback({ type: 'error', message: 'Please enter a valid URL starting with http:// or https://' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sources`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: pasteUrl.trim(),
+          province: pasteProvince
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Failed to add source');
+      }
+
+      setFeedback({
+        type: 'success',
+        message: `✓ Successfully added "${data.source.name}"! Auto-resolved to: ${data.source.url}`
+      });
+
+      setSourcesList(prev => [data.source, ...prev.filter(s => s.id !== data.source.id)]);
+      setPasteUrl('');
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Group feeds by tier
   const byTier = useMemo(() => {
     const groups = { 1:[], 2:[], 3:[], 4:[] };
-    RSS_FEEDS.forEach(f => {
+    sourcesList.forEach(f => {
       const tier = f.tier || 2;
       if (groups[tier]) groups[tier].push(f);
+      else groups[4].push(f);
     });
     return groups;
-  }, []);
+  }, [sourcesList]);
 
   // Overall stats
-  const totalFeeds = RSS_FEEDS.length;
-  const liveFeeds  = RSS_FEEDS.filter(f => feedStatus?.[f.id]?.ok).length;
-  const tvFeeds    = RSS_FEEDS.filter(f => f.type === 'tv').length;
-  const portalFeeds= RSS_FEEDS.filter(f => f.type === 'media').length;
-  const regionFeeds= RSS_FEEDS.filter(f => f.type === 'regional').length;
-  const govtFeeds  = RSS_FEEDS.filter(f => f.type === 'govt' || f.type === 'intl').length;
+  const totalFeeds = sourcesList.length;
+  const liveFeeds  = sourcesList.filter(f => feedStatus?.[f.id]?.ok).length;
+  const tvFeeds    = sourcesList.filter(f => f.type === 'tv').length;
+  const portalFeeds= sourcesList.filter(f => f.type === 'media').length;
+  const regionFeeds= sourcesList.filter(f => f.type === 'regional').length;
+  const govtFeeds  = sourcesList.filter(f => f.type === 'govt' || f.type === 'intl').length;
 
-  // Unique types for filter chips
-  const typeKeys = [...new Set(RSS_FEEDS.map(f => f.type))];
+  const typeKeys = [...new Set(sourcesList.map(f => f.type))];
 
   return (
     <div className="page source-manager-page">
@@ -169,7 +233,7 @@ export default function SourceManager({ feedStatus }) {
         <div className="sm-header-text">
           <h1 className="sm-title">📡 Source Discovery Engine</h1>
           <p className="sm-subtitle">
-            Nepal's 4-tier media ecosystem — {totalFeeds} sources across TV, digital portals & govt (dead/inactive sources &gt; 2 months auto-removed)
+            Nepal's media monitoring network — {totalFeeds} sources across YouTube channels, digital portals & govt agencies
           </p>
         </div>
         <div className="sm-header-stats">
@@ -179,7 +243,7 @@ export default function SourceManager({ feedStatus }) {
           </div>
           <div className="sm-stat" style={{ borderTop:'2px solid #dc2626' }}>
             <div className="sm-stat-val" style={{ color:'#dc2626' }}>{tvFeeds}</div>
-            <div className="sm-stat-lbl">TV Channels</div>
+            <div className="sm-stat-lbl">TV / YouTube</div>
           </div>
           <div className="sm-stat" style={{ borderTop:'2px solid #1a6aff' }}>
             <div className="sm-stat-val" style={{ color:'#1a6aff' }}>{portalFeeds}</div>
@@ -196,10 +260,87 @@ export default function SourceManager({ feedStatus }) {
         </div>
       </div>
 
+      {/* ── Link Paste & Source Ingestion Bar ─────────────────────── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, border: '1px solid var(--border)', background: 'var(--bg-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: '1.2rem' }}>🔗</span>
+          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Paste YouTube Channel or News Website Link</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginLeft: 'auto' }}>Auto-resolves to RSS feed & persists to cloud</span>
+        </div>
+
+        <form onSubmit={handleAddSource} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <input
+            type="url"
+            value={pasteUrl}
+            onChange={e => setPasteUrl(e.target.value)}
+            placeholder="Paste URL, e.g. https://www.youtube.com/@kantipurtv or https://myrepublica.nagariknetwork.com"
+            required
+            style={{
+              flex: 1,
+              minWidth: 280,
+              padding: '9px 14px',
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-3)',
+              color: 'var(--text-1)',
+              fontSize: '0.9rem'
+            }}
+          />
+
+          <select
+            value={pasteProvince}
+            onChange={e => setPasteProvince(e.target.value)}
+            style={{
+              padding: '9px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-3)',
+              color: 'var(--text-1)',
+              fontSize: '0.85rem'
+            }}>
+            {Object.keys(PROV_COLORS).map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            style={{
+              padding: '9px 20px',
+              background: 'var(--accent)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.7 : 1,
+              whiteSpace: 'nowrap'
+            }}>
+            {isSubmitting ? 'Resolving...' : '+ Add & Ingest Source'}
+          </button>
+        </form>
+
+        {feedback && (
+          <div style={{
+            marginTop: 10,
+            padding: '8px 12px',
+            borderRadius: 6,
+            fontSize: '0.85rem',
+            background: feedback.type === 'success' ? '#10b98115' : '#ef444415',
+            color: feedback.type === 'success' ? '#10b981' : '#ef4444',
+            border: `1px solid ${feedback.type === 'success' ? '#10b98130' : '#ef444430'}`
+          }}>
+            {feedback.message}
+          </div>
+        )}
+      </div>
+
       {/* ── Architecture diagram ───────────────────────────────── */}
       <div className="sm-arch-row">
         {[1,2,3,4].map(t => {
-          const meta = TIER_META[t];
+          const meta = TIER_META[t] || { color: '#6b7280', icon: '📁', label: `Tier ${t}`, desc: 'Sources' };
           const count = byTier[t].length;
           const live = byTier[t].filter(f => feedStatus?.[f.id]?.ok).length;
           return (
@@ -236,8 +377,8 @@ export default function SourceManager({ feedStatus }) {
             All {totalFeeds}
           </button>
           {typeKeys.map(type => {
-            const meta = FEED_TYPES[type];
-            const count = RSS_FEEDS.filter(f => f.type === type).length;
+            const meta = FEED_TYPES[type] || { color: '#6b7280', icon: '📡', label: type };
+            const count = sourcesList.filter(f => f.type === type).length;
             return (
               <button key={type}
                 className={`sm-chip ${activeType === type ? 'active' : ''}`}
@@ -262,37 +403,6 @@ export default function SourceManager({ feedStatus }) {
             activeType={activeType}
           />
         ))}
-      </div>
-
-      {/* ── Insight box ──────────────────────────────────────────── */}
-      <div className="sm-insight-box">
-        <div className="sm-insight-title">⚡ Critical Upgrade Path</div>
-        <div className="sm-insight-grid">
-          <div className="sm-insight-item">
-            <div className="sm-insight-step">Step 1</div>
-            <div className="sm-insight-body">
-              <strong>Source Discovery</strong> — Crawl Facebook Pages with keywords "News", "TV", "Khabar", "Samachar" targeting Nepal's 77 districts
-            </div>
-          </div>
-          <div className="sm-insight-item">
-            <div className="sm-insight-step">Step 2</div>
-            <div className="sm-insight-body">
-              <strong>Content Ingestion</strong> — RSS for portals, YouTube feed for TV channels, Google News as fallback for sources without RSS
-            </div>
-          </div>
-          <div className="sm-insight-item">
-            <div className="sm-insight-step">Step 3</div>
-            <div className="sm-insight-body">
-              <strong>og:image Scraping</strong> — Backend fetches actual article pages to extract real Nepal-specific photos from each article
-            </div>
-          </div>
-          <div className="sm-insight-item">
-            <div className="sm-insight-step">Step 4</div>
-            <div className="sm-insight-body">
-              <strong>Story Clustering</strong> — Group articles from multiple sources covering same event, show "X sources covering this story"
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

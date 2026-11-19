@@ -10,7 +10,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import cron from 'node-cron';
-import { initDB, queryArticles, getFeedStatuses, getStats, purgeOldArticles } from './db.js';
+import { initDB, queryArticles, getFeedStatuses, getStats, purgeOldArticles, getAllSources, upsertSources } from './db.js';
 import { fetchAllFeeds, enrichArticlesWithOgImages } from './fetcher.js';
 import { computeSentimentReport } from './sentiment.js';
 import { clusterAndFlatten, clusterArticles } from './clustering.js';
@@ -19,7 +19,6 @@ const PORT = process.env.PORT || 4000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 
 // ── Init ─────────────────────────────────────────────────────
-initDB();
 const app = express();
 const httpServer = createServer(app);
 
@@ -52,10 +51,10 @@ app.use(express.json());
 // ── API Routes ───────────────────────────────────────────────
 
 // GET /api/articles — main articles endpoint
-app.get('/api/articles', (req, res) => {
+app.get('/api/articles', async (req, res) => {
   const { limit = 200, offset = 0, category, province, search } = req.query;
   try {
-    const articles = queryArticles({
+    const articles = await queryArticles({
       limit: Math.min(parseInt(limit), 500),
       offset: parseInt(offset),
       category: category || undefined,
@@ -87,9 +86,11 @@ app.get('/api/articles', (req, res) => {
       ? clusterAndFlatten(enriched)
       : enriched;
 
+    const feedStatus = await getFeedStatuses();
+
     res.json({
       articles: clustered,
-      feedStatus: getFeedStatuses(),
+      feedStatus,
       total: clustered.length,
       timestamp: new Date().toISOString(),
     });
@@ -99,9 +100,9 @@ app.get('/api/articles', (req, res) => {
 });
 
 // GET /api/feeds — feed status list
-app.get('/api/feeds', (req, res) => {
+app.get('/api/feeds', async (req, res) => {
   try {
-    const feeds = getFeedStatuses();
+    const feeds = await getFeedStatuses();
     res.json({ feeds, total: feeds.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -109,9 +110,9 @@ app.get('/api/feeds', (req, res) => {
 });
 
 // GET /api/stats — dashboard stats
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', async (req, res) => {
   try {
-    const stats = getStats();
+    const stats = await getStats();
     res.json({ ...stats, connectedClients, timestamp: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -119,11 +120,11 @@ app.get('/api/stats', (req, res) => {
 });
 
 // GET /api/search?q=query — full-text search
-app.get('/api/search', (req, res) => {
+app.get('/api/search', async (req, res) => {
   const { q, limit = 50 } = req.query;
   if (!q) return res.status(400).json({ error: 'q parameter required' });
   try {
-    const results = queryArticles({ search: q, limit: parseInt(limit) });
+    const results = await queryArticles({ search: q, limit: parseInt(limit) });
     res.json({ results, total: results.length, query: q });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -131,10 +132,10 @@ app.get('/api/search', (req, res) => {
 });
 
 // GET /api/clusters — story threads grouped by similarity
-app.get('/api/clusters', (req, res) => {
+app.get('/api/clusters', async (req, res) => {
   try {
     const { limit = 300, category, threshold = 0.35 } = req.query;
-    const articles = queryArticles({
+    const articles = await queryArticles({
       limit: Math.min(parseInt(limit), 500),
       category: category || undefined,
     });
@@ -183,10 +184,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // GET /api/sentiment — Nepal civic mood analysis
-app.get('/api/sentiment', (req, res) => {
+app.get('/api/sentiment', async (req, res) => {
   try {
     const { limit = 400, province, category } = req.query;
-    const articles = queryArticles({
+    const articles = await queryArticles({
       limit: parseInt(limit),
       province: province || undefined,
       category: category || undefined,
@@ -208,14 +209,14 @@ cron.schedule('*/90 * * * * *', async () => {
 
 // Enrich articles with og:images every 3 minutes
 cron.schedule('*/3 * * * *', async () => {
-  const articles = queryArticles({ limit: 50 });
+  const articles = await queryArticles({ limit: 50 });
   await enrichArticlesWithOgImages(articles);
 });
 
-// Purge articles older than 7 days every midnight
-cron.schedule('0 0 * * *', () => {
-  const deleted = purgeOldArticles(7);
-  console.log(`[Cron] Purged ${deleted} old articles`);
+// Soft archive retention (purges articles older than 180 days)
+cron.schedule('0 0 * * *', async () => {
+  const deleted = await purgeOldArticles(180);
+  console.log(`[Cron] Purged ${deleted} old articles (>180d)`);
 });
 
 // GET /api/rss — CORS proxy for client-side RSS feeds
@@ -264,6 +265,89 @@ app.get('/api/rss', async (req, res) => {
   }
 });
 
+// GET /api/sources — list active sources
+app.get('/api/sources', async (req, res) => {
+  try {
+    const sources = await getAllSources();
+    res.json({ sources, total: sources.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/sources — add a new source (with YouTube & website auto-resolution)
+app.post('/api/sources', async (req, res) => {
+  try {
+    const { url, name, province = 'National', type = 'media', tier = 4 } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL required' });
+
+    let finalUrl = url.trim();
+    let detectedType = type;
+    let sourceName = name;
+
+    // 1. YouTube Channel Resolution
+    if (finalUrl.includes('youtube.com/') || finalUrl.includes('youtu.be/')) {
+      detectedType = 'tv';
+      if (!finalUrl.includes('videos.xml')) {
+        try {
+          const ytRes = await fetch(finalUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            signal: AbortSignal.timeout(6000)
+          });
+          const html = await ytRes.text();
+          const channelIdMatch = html.match(/"channelId":"(UC[a-zA-Z0-9_-]+)"/) ||
+                                 html.match(/itemprop="channelId" content="(UC[a-zA-Z0-9_-]+)"/);
+          if (channelIdMatch) {
+            finalUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelIdMatch[1]}`;
+          }
+          if (!sourceName) {
+            const titleMatch = html.match(/<meta property="og:title" content="([^"]+)">/);
+            if (titleMatch) sourceName = titleMatch[1];
+          }
+        } catch (e) {
+          console.warn('[Sources] Could not resolve YouTube channelId:', e.message);
+        }
+      }
+    } else if (!finalUrl.includes('.xml') && !finalUrl.includes('/rss') && !finalUrl.includes('/feed')) {
+      // 2. Website without direct RSS — Google News Search fallback
+      try {
+        const u = new URL(finalUrl);
+        const domain = u.hostname.replace(/^www\./, '');
+        if (!sourceName) sourceName = domain.split('.')[0].toUpperCase();
+        finalUrl = `https://news.google.com/rss/search?q=site:${domain}`;
+      } catch (e) {}
+    }
+
+    if (!sourceName) {
+      try { sourceName = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (e) { sourceName = 'New Source'; }
+    }
+
+    const id = `src_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newSource = {
+      id,
+      name: sourceName,
+      type: detectedType,
+      tier: parseInt(tier) || 4,
+      province,
+      url: finalUrl,
+      fb: null,
+      website: url,
+      verified: 0,
+      status: 'active'
+    };
+
+    await upsertSources([newSource]);
+
+    res.json({
+      ok: true,
+      message: 'Source added successfully',
+      source: newSource
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Start Server ─────────────────────────────────────────────
 httpServer.listen(PORT, async () => {
   console.log(`
@@ -275,6 +359,9 @@ httpServer.listen(PORT, async () => {
   ║  Stats: http://localhost:${PORT}/api/stats    ║
   ╚════════════════════════════════════════════╝
   `);
+
+  // Initialize DB & bootstrap sources if empty
+  await initDB();
 
   // Initial fetch on startup
   console.log('[Startup] Running initial feed fetch…');

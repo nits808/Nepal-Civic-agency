@@ -11,7 +11,7 @@ const BACKEND_URL  = API_BASE_URL;
 const WS_URL       = WS_BASE_URL;
 const CACHE_KEY    = 'ncig_v4_cache';
 const CACHE_TTL    = 9 * 60_000;       // 9 min cache (aligns with 10 min refresh)
-const REFRESH_MS   = 10 * 60_000;     // client-side fallback refresh (10 min)
+const REFRESH_MS   = 60_000;          // 60-second SWR background polling
 const TIMEOUT_MS   = 15000;
 const IMAGE_FETCH_LIMIT = 60;
 const IMAGE_CONCURRENCY = 6;
@@ -283,35 +283,28 @@ export function useNews() {
       setIsRefreshing(true);
     }
 
-    // 2. Check if backend is online
-    const backendUp = await checkBackend();
-    if (!mountedRef.current) return;
-    setBackendOnline(backendUp);
-
-    if (backendUp) {
-      // -- Backend path ------------------------------------
-      try {
-        const { articles, feedStatus } = await fetchFromBackend();
-        if (!mountedRef.current) return;
-        if (!articles || articles.length === 0) {
-          throw new Error('Backend returned no articles');
-        }
-        const unique = dedup(articles);
-        setArticles(unique);
-        setFeedStatus(feedStatus);
-        setLastUpdated(new Date());
-        setProgress({ done: RSS_FEEDS.length, total: RSS_FEEDS.length });
-        writeCache(unique, feedStatus, 'backend');
-        connectWS();
-        enhanceImages(unique);
-      } catch (err) {
-        console.warn('[Backend fetch failed]', err.message);
-        setBackendOnline(false);
-        await fetchClientFallback();
+    // 2. Direct fetch from Turso-backed /api/articles
+    try {
+      const { articles, feedStatus } = await fetchFromBackend();
+      if (!mountedRef.current) return;
+      if (!articles || articles.length === 0) {
+        throw new Error('No articles returned from API');
       }
-    } else {
+      const unique = dedup(articles);
+      setArticles(unique);
+      setFeedStatus(feedStatus);
+      setBackendOnline(true);
+      setLastUpdated(new Date());
+      setProgress({ done: RSS_FEEDS.length, total: RSS_FEEDS.length });
+      writeCache(unique, feedStatus, 'backend');
+      connectWS();
+      enhanceImages(unique);
+    } catch (err) {
+      console.warn('[API fetch failed, falling back to client]', err.message);
+      setBackendOnline(false);
       await fetchClientFallback();
     }
+
     if (mountedRef.current) {
       setLoading(false);
       setIsRefreshing(false);

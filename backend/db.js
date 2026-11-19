@@ -1,29 +1,31 @@
 // ═══════════════════════════════════════════════════════════════
-// NCIG Backend — Built-in SQLite Database Layer
-// Stores articles, cache metadata, and news sources
+// NCIG Backend — LibSQL Database Layer (Turso Cloud & Local)
+// Stores articles, cache metadata, and news sources with zero C++ compilation
 // ═══════════════════════════════════════════════════════════════
 
-import Database from 'better-sqlite3';
+import { createClient } from '@libsql/client';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { mkdirSync } from 'fs';
+import { RSS_FEEDS } from './feeds.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DB_DIR || (process.env.NODE_ENV === 'production' ? join(__dir, 'data') : __dir);
-mkdirSync(DATA_DIR, { recursive: true });
-const DB_PATH = join(DATA_DIR, 'ncig.db');
+const LOCAL_DB_PATH = join(__dir, 'ncig.db');
 
-let db;
+let client;
 
-export function initDB() {
-  db = new Database(DB_PATH);
+export function getDB() {
+  if (!client) {
+    const url = process.env.TURSO_DATABASE_URL || `file:${LOCAL_DB_PATH}`;
+    const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+    client = createClient({ url, authToken });
+  }
+  return client;
+}
 
-  // Set pragmas for performance
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('foreign_keys = ON');
+export async function initDB() {
+  const db = getDB();
 
-  db.exec(`
+  await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS articles (
       id          TEXT PRIMARY KEY,
       title       TEXT NOT NULL,
@@ -42,13 +44,6 @@ export function initDB() {
       fetched_at  INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
-    CREATE TABLE IF NOT EXISTS article_embeddings (
-      article_id  TEXT PRIMARY KEY,
-      embedding   TEXT,
-      updated_at  INTEGER NOT NULL DEFAULT (unixepoch()),
-      FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
-    );
-
     CREATE TABLE IF NOT EXISTS sources (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL,
@@ -60,15 +55,6 @@ export function initDB() {
       website     TEXT,
       verified    INTEGER DEFAULT 0,
       status      TEXT DEFAULT 'active'
-    );
-
-    CREATE TABLE IF NOT EXISTS discovered_sources (
-      id          TEXT PRIMARY KEY,
-      district    TEXT,
-      page_name   TEXT,
-      url         TEXT UNIQUE,
-      discovered_at TEXT,
-      status      TEXT DEFAULT 'new'
     );
 
     CREATE TABLE IF NOT EXISTS feed_status (
@@ -100,150 +86,160 @@ export function initDB() {
     CREATE INDEX IF NOT EXISTS idx_articles_source   ON articles(source);
   `);
 
-  console.log(`[DB] Using better-sqlite3 at ${DB_PATH}`);
-  return db;
-}
-
-export function getDB() {
-  if (!db) initDB();
+  console.log(`[DB] Connected via @libsql/client (${process.env.TURSO_DATABASE_URL ? 'Turso Cloud' : 'Local file: ' + LOCAL_DB_PATH})`);
+  await bootstrapSources(RSS_FEEDS);
   return db;
 }
 
 // ── Insert / upsert articles ─────────────────────────────────
-export function upsertArticles(articles) {
+export async function upsertArticles(articles) {
+  if (!articles || articles.length === 0) return 0;
   const db = getDB();
-  const insert = db.prepare(`
-    INSERT OR REPLACE INTO articles
+
+  const stmts = articles.map(row => ({
+    sql: `INSERT OR REPLACE INTO articles
       (id, title, link, description, category, district, province,
        date, time_ago, source, feed_type, image_url, has_real_image, og_image, fetched_at)
-    VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
-  `);
-
-  let count = 0;
-  const trx = db.transaction((items) => {
-    for (const row of items) {
-      insert.run(
-        row.id,
-        row.title,
-        row.link || '',
-        row.description || '',
-        row.category || 'politics',
-        row.district || 'Kathmandu',
-        row.province || 'Bagmati',
-        row.date || new Date().toISOString(),
-        row.timeAgo || 'recently',
-        row.source || '',
-        row.feedType || 'media',
-        row.imageUrl || null,
-        row.hasRealImage ? 1 : 0,
-        row.ogImage || null
-      );
-      count++;
-    }
-  });
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())`,
+    args: [
+      row.id,
+      row.title,
+      row.link || '',
+      row.description || '',
+      row.category || 'politics',
+      row.district || 'Kathmandu',
+      row.province || 'Bagmati',
+      row.date || new Date().toISOString(),
+      row.timeAgo || 'recently',
+      row.source || '',
+      row.feedType || 'media',
+      row.imageUrl || null,
+      row.hasRealImage ? 1 : 0,
+      row.ogImage || null
+    ]
+  }));
 
   try {
-    trx(articles);
+    // Process in batches of 50 to avoid payload limits
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < stmts.length; i += BATCH_SIZE) {
+      const slice = stmts.slice(i, i + BATCH_SIZE);
+      await db.batch(slice, 'write');
+    }
+    return articles.length;
   } catch (e) {
     console.warn('[DB] upsertArticles failed:', e.message);
+    return 0;
   }
-
-  return count;
 }
 
 // ── Upsert feed status ───────────────────────────────────────
-export function upsertFeedStatus(feedId, feedName, feedType, ok, count, error = null) {
+export async function upsertFeedStatus(feedId, feedName, feedType, ok, count, error = null) {
   const db = getDB();
-  const existing = db.prepare(`
-    SELECT article_count
-    FROM feed_status
-    WHERE feed_id = ?
-  `).get(feedId);
+  try {
+    const existingRes = await db.execute({
+      sql: 'SELECT article_count FROM feed_status WHERE feed_id = ?',
+      args: [feedId]
+    });
+    const existing = existingRes.rows[0];
+    const normalizedCount = Number.isFinite(count) ? count : (existing?.article_count || 0);
 
-  const normalizedCount = Number.isFinite(count)
-    ? count
-    : (existing?.article_count || 0);
-
-  db.prepare(`
-    INSERT OR REPLACE INTO feed_status (feed_id, feed_name, feed_type, ok, article_count, last_fetched, error_msg)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(feedId, feedName, feedType, ok ? 1 : 0, normalizedCount, new Date().toISOString(), error);
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO feed_status (feed_id, feed_name, feed_type, ok, article_count, last_fetched, error_msg)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [feedId, feedName, feedType, ok ? 1 : 0, normalizedCount, new Date().toISOString(), error]
+    });
+  } catch (e) {
+    console.warn('[DB] upsertFeedStatus failed:', e.message);
+  }
 }
 
 // ── Query articles ───────────────────────────────────────────
-export function queryArticles({ limit = 200, offset = 0, category, province, search } = {}) {
+export async function queryArticles({ limit = 200, offset = 0, category, province, search } = {}) {
   const db = getDB();
 
   if (search) {
-    return db.prepare(`
-        SELECT * FROM articles 
-        WHERE title LIKE ? OR description LIKE ? OR content LIKE ?
-        ORDER BY date DESC
-        LIMIT ? OFFSET ?
-    `).all(`%${search}%`, `%${search}%`, `%${search}%`, limit, offset);
+    const res = await db.execute({
+      sql: `SELECT * FROM articles 
+        WHERE title LIKE ? OR description LIKE ?
+        ORDER BY date DESC LIMIT ? OFFSET ?`,
+      args: [`%${search}%`, `%${search}%`, limit, offset]
+    });
+    return res.rows;
   }
 
   let query = 'SELECT * FROM articles WHERE 1=1';
-  const params = [];
+  const args = [];
 
-  if (category) { query += ' AND category = ?'; params.push(category); }
-  if (province)  { query += ' AND province = ?'; params.push(province); }
+  if (category) { query += ' AND category = ?'; args.push(category); }
+  if (province)  { query += ' AND province = ?'; args.push(province); }
 
   query += ' ORDER BY date DESC LIMIT ? OFFSET ?';
-  params.push(limit, offset);
+  args.push(limit, offset);
 
-  return db.prepare(query).all(...params);
+  const res = await db.execute({ sql: query, args });
+  return res.rows;
 }
 
 // ── Get feed statuses ────────────────────────────────────────
-export function getFeedStatuses() {
-  return getDB().prepare('SELECT * FROM feed_status ORDER BY feed_name').all();
+export async function getFeedStatuses() {
+  const res = await getDB().execute('SELECT * FROM feed_status ORDER BY feed_name');
+  return res.rows;
 }
 
 // ── News Source Management ───────────────────────────────────
-export function getAllSources() {
-  return getDB().prepare("SELECT * FROM sources WHERE status = 'active'").all();
+export async function getAllSources() {
+  const res = await getDB().execute("SELECT * FROM sources WHERE status = 'active'");
+  return res.rows;
 }
 
-export function upsertSources(sources) {
+export async function upsertSources(sources) {
+  if (!sources || sources.length === 0) return;
   const db = getDB();
-  const insert = db.prepare(`
-    INSERT INTO sources (id, name, type, tier, province, url, fb, website, verified, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      name = excluded.name,
-      type = excluded.type,
-      tier = excluded.tier,
-      province = excluded.province,
-      url = excluded.url,
-      fb = excluded.fb,
-      website = excluded.website,
-      verified = excluded.verified,
-      status = excluded.status
-  `);
-
-  const trx = db.transaction((items) => {
-    for (const f of items) {
-      insert.run(f.id, f.name, f.type, f.tier, f.province, f.url, f.fb, f.website, f.verified, f.status);
-    }
-  });
+  const stmts = sources.map(f => ({
+    sql: `INSERT INTO sources (id, name, type, tier, province, url, fb, website, verified, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        type = excluded.type,
+        tier = excluded.tier,
+        province = excluded.province,
+        url = excluded.url,
+        fb = excluded.fb,
+        website = excluded.website,
+        verified = excluded.verified,
+        status = excluded.status`,
+    args: [
+      f.id,
+      f.name,
+      f.type || 'media',
+      f.tier || 4,
+      f.province || 'National',
+      f.url,
+      f.fb || null,
+      f.website || null,
+      f.verified ? 1 : 0,
+      f.status || 'active'
+    ]
+  }));
 
   try {
-    trx(sources);
+    await db.batch(stmts, 'write');
   } catch (err) {
     console.error('[DB] upsertSources failed:', err.message);
   }
 }
 
 // ── Bootstrap Registry ───────────────────────────────────────
-export function bootstrapSources(legacyFeeds) {
-    const db = getDB();
-    const count = db.prepare('SELECT COUNT(*) as c FROM sources').get().c;
+export async function bootstrapSources(legacyFeeds) {
+  const db = getDB();
+  try {
+    const res = await db.execute('SELECT COUNT(*) as c FROM sources');
+    const count = Number(res.rows[0]?.c || 0);
     if (count > 0) return;
-  
+
     console.log(`[DB] Bootstrapping sources table with ${legacyFeeds.length} items…`);
-    upsertSources(legacyFeeds.map(f => ({
+    await upsertSources(legacyFeeds.map(f => ({
       id: f.id,
       name: f.name,
       type: f.type || 'media',
@@ -255,84 +251,91 @@ export function bootstrapSources(legacyFeeds) {
       verified: f.verified ? 1 : 0,
       status: 'active'
     })));
-}
-
-// ── Discovery Management ─────────────────────────────────────
-export function saveDiscoveredSources(results) {
-  const db = getDB();
-  const insert = db.prepare(`
-    INSERT INTO discovered_sources (id, district, page_name, url, discovered_at, status)
-    VALUES (?, ?, ?, ?, ?, 'new')
-    ON CONFLICT(url) DO NOTHING
-  `);
-
-  const trx = db.transaction((items) => {
-    for (const row of items) {
-      insert.run(row.id || Buffer.from(row.url).toString('base64'), row.district, row.page_name || row.pageName, row.url, row.discovered_at || row.date);
-    }
-  });
-
-  try {
-    trx(results);
   } catch (err) {
-    console.error('[DB] saveDiscoveredSources failed:', err.message);
+    console.warn('[DB] bootstrapSources check failed:', err.message);
   }
 }
 
-export function getDiscoveredSources(status = 'new') {
-  return getDB().prepare('SELECT * FROM discovered_sources WHERE status = ? ORDER BY discovered_at DESC').all(status);
-}
-
-export function updateDiscoveryStatus(id, status) {
-  getDB().prepare('UPDATE discovered_sources SET status = ? WHERE id = ?').run(status, id);
-}
-
 // ── Cache og:image for URL ───────────────────────────────────
-export function cacheOgImage(url, ogImage) {
-  getDB().prepare(`
-    INSERT OR REPLACE INTO og_image_cache (url, og_image, fetched_at)
-    VALUES (?, ?, unixepoch())
-  `).run(url, ogImage);
+export async function cacheOgImage(url, ogImage) {
+  try {
+    await getDB().execute({
+      sql: `INSERT OR REPLACE INTO og_image_cache (url, og_image, fetched_at) VALUES (?, ?, unixepoch())`,
+      args: [url, ogImage]
+    });
+  } catch (e) {}
 }
 
-export function getCachedOgImage(url) {
-  const row = getDB().prepare('SELECT og_image FROM og_image_cache WHERE url = ?').get(url);
-  return row?.og_image || null;
+export async function getCachedOgImage(url) {
+  try {
+    const res = await getDB().execute({
+      sql: 'SELECT og_image FROM og_image_cache WHERE url = ?',
+      args: [url]
+    });
+    return res.rows[0]?.og_image || null;
+  } catch (e) {
+    return null;
+  }
 }
 
-export function getFeedHttpCache(feedId) {
-  return getDB()
-    .prepare('SELECT etag, last_modified FROM feed_http_cache WHERE feed_id = ?')
-    .get(feedId) || null;
+export async function getFeedHttpCache(feedId) {
+  try {
+    const res = await getDB().execute({
+      sql: 'SELECT etag, last_modified FROM feed_http_cache WHERE feed_id = ?',
+      args: [feedId]
+    });
+    return res.rows[0] || null;
+  } catch (e) {
+    return null;
+  }
 }
 
-export function upsertFeedHttpCache(feedId, etag = null, lastModified = null) {
-  getDB().prepare(`
-    INSERT INTO feed_http_cache (feed_id, etag, last_modified, updated_at)
-    VALUES (?, ?, ?, unixepoch())
-    ON CONFLICT(feed_id) DO UPDATE SET
-      etag = excluded.etag,
-      last_modified = excluded.last_modified,
-      updated_at = unixepoch()
-  `).run(feedId, etag, lastModified);
+export async function upsertFeedHttpCache(feedId, etag = null, lastModified = null) {
+  try {
+    await getDB().execute({
+      sql: `INSERT INTO feed_http_cache (feed_id, etag, last_modified, updated_at)
+        VALUES (?, ?, ?, unixepoch())
+        ON CONFLICT(feed_id) DO UPDATE SET
+          etag = excluded.etag,
+          last_modified = excluded.last_modified,
+          updated_at = unixepoch()`,
+      args: [feedId, etag, lastModified]
+    });
+  } catch (e) {}
 }
 
 // ── Stats ────────────────────────────────────────────────────
-export function getStats() {
+export async function getStats() {
   const db = getDB();
-  const total = db.prepare('SELECT COUNT(*) as c FROM articles').get().c;
-  const byCategory = db.prepare('SELECT category, COUNT(*) as c FROM articles GROUP BY category ORDER BY c DESC').all();
-  const byProvince = db.prepare('SELECT province, COUNT(*) as c FROM articles GROUP BY province ORDER BY c DESC').all();
-  const latest = db.prepare('SELECT MAX(date) as d FROM articles').get().d;
-  const feedsOk = db.prepare('SELECT COUNT(*) as c FROM feed_status WHERE ok = 1').get().c;
-  const feedsTotal = db.prepare('SELECT COUNT(*) as c FROM feed_status').get().c;
+  const [totalRes, catRes, provRes, latestRes, okRes, allFeedsRes] = await Promise.all([
+    db.execute('SELECT COUNT(*) as c FROM articles'),
+    db.execute('SELECT category, COUNT(*) as c FROM articles GROUP BY category ORDER BY c DESC'),
+    db.execute('SELECT province, COUNT(*) as c FROM articles GROUP BY province ORDER BY c DESC'),
+    db.execute('SELECT MAX(date) as d FROM articles'),
+    db.execute('SELECT COUNT(*) as c FROM feed_status WHERE ok = 1'),
+    db.execute('SELECT COUNT(*) as c FROM feed_status')
+  ]);
 
-  return { total, byCategory, byProvince, latest, feedsOk, feedsTotal };
+  return {
+    total: Number(totalRes.rows[0]?.c || 0),
+    byCategory: catRes.rows,
+    byProvince: provRes.rows,
+    latest: latestRes.rows[0]?.d || null,
+    feedsOk: Number(okRes.rows[0]?.c || 0),
+    feedsTotal: Number(allFeedsRes.rows[0]?.c || 0)
+  };
 }
 
-// ── Cleanup old articles (keep last 7 days) ──────────────────
-export function purgeOldArticles(daysToKeep = 7) {
+// ── Soft archive retention (Defaults to 180 days — preserves historical news) ──
+export async function purgeOldArticles(daysToKeep = 180) {
   const cutoff = new Date(Date.now() - daysToKeep * 86400_000).toISOString();
-  const result = getDB().prepare("DELETE FROM articles WHERE date < ?").run(cutoff);
-  return result.changes;
+  try {
+    const res = await getDB().execute({
+      sql: 'DELETE FROM articles WHERE date < ?',
+      args: [cutoff]
+    });
+    return res.rowsAffected || 0;
+  } catch (e) {
+    return 0;
+  }
 }

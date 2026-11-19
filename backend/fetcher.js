@@ -56,7 +56,7 @@ async function fetchFeed(feed) {
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const cache = getFeedHttpCache(feed.id);
+    const cache = await getFeedHttpCache(feed.id);
     const headers = {
       'User-Agent': 'Mozilla/5.0 (compatible; NCIG-Bot/3.0; +https://ncig.np)',
       Accept: 'application/rss+xml, application/xml, text/xml, */*',
@@ -75,7 +75,7 @@ async function fetchFeed(feed) {
     const etag = res.headers.get('etag');
     const lastModified = res.headers.get('last-modified');
     if (etag || lastModified) {
-      upsertFeedHttpCache(feed.id, etag || null, lastModified || null);
+      await upsertFeedHttpCache(feed.id, etag || null, lastModified || null);
     }
 
     const xml = await res.text();
@@ -92,7 +92,7 @@ async function fetchFeed(feed) {
 export async function fetchOgImage(url) {
   if (!url || url.startsWith('#') || !isSafeUrl(url)) return null;
 
-  const cached = getCachedOgImage(url);
+  const cached = await getCachedOgImage(url);
   if (cached) return cached;
 
   const ctrl = new AbortController();
@@ -123,7 +123,7 @@ export async function fetchOgImage(url) {
             ogImage = null;
         }
     }
-    if (ogImage) cacheOgImage(url, ogImage);
+    if (ogImage) await cacheOgImage(url, ogImage);
     return ogImage;
   } catch {
     clearTimeout(timer);
@@ -132,13 +132,13 @@ export async function fetchOgImage(url) {
 }
 
 export async function fetchAllFeeds(wss = null) {
-  const sources = getAllSources();
+  const sources = await getAllSources();
   console.log(`[Fetcher] Starting fetch cycle for ${sources.length} feeds...`);
   const startTime = Date.now();
 
   const promises = sources.map((feed) =>
-    fetchFeed(feed).then((result) => {
-      upsertFeedStatus(
+    fetchFeed(feed).then(async (result) => {
+      await upsertFeedStatus(
         feed.id,
         feed.name,
         feed.type,
@@ -148,7 +148,7 @@ export async function fetchAllFeeds(wss = null) {
       );
 
       if (result.ok && result.articles.length > 0) {
-        const inserted = upsertArticles(result.articles);
+        const inserted = await upsertArticles(result.articles);
         if (wss && inserted > 0) {
           const msg = JSON.stringify({ type: 'NEW_ARTICLES', source: feed.name, count: inserted });
           wss.clients.forEach((client) => {

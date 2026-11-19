@@ -2,6 +2,7 @@
   "name": "nepal-civic-intelligence-graph",
   "version": "3.0.0",
   "description": "National-level civic intelligence platform for Nepal",
+  "type": "module",
   "private": true,
   "workspaces": [
     "frontend",
@@ -11,6 +12,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "crawl": "npm --prefix backend run crawl",
     "build": "npm run build --workspace=frontend",
     "preview": "npm -w frontend run preview",
     "docker:up": "docker-compose up -d",
@@ -18,5 +20,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0"
   }
 }
