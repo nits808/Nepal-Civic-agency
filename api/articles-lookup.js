@@ -9,41 +9,34 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // Support POST body or GET query param (?ids=1,2,3 or ?article_ids=1,2,3)
-  let requestedIds = [];
+  // Parse IDs from POST body or GET query (?article_ids=... or ?ids=...)
+  let article_ids = [];
   if (req.method === 'POST') {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    requestedIds = body.article_ids || body.ids || [];
+    article_ids = body.article_ids || body.ids;
   } else if (req.method === 'GET') {
     const qIds = req.query.article_ids || req.query.ids;
     if (typeof qIds === 'string') {
-      requestedIds = qIds.split(',').map(s => s.trim());
+      article_ids = qIds.split(',').map(s => s.trim());
     } else if (Array.isArray(qIds)) {
-      requestedIds = qIds;
+      article_ids = qIds;
     }
+  } else {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!Array.isArray(requestedIds)) {
-    requestedIds = [requestedIds];
+  if (!Array.isArray(article_ids) || article_ids.length === 0) {
+    return res.status(400).json({ error: 'article_ids must be a non-empty array of strings' });
   }
 
-  const cleanIds = requestedIds
-    .filter(id => id && typeof id === 'string' && id.trim().length > 0)
-    .map(id => id.trim())
-    .slice(0, 100); // Cap at 100 IDs per request for security & performance
-
+  const cleanIds = [...new Set(article_ids.filter(id => typeof id === 'string' && id.trim()))].slice(0, 100);
   if (cleanIds.length === 0) {
-    return res.status(200).json({
-      ok: true,
-      count: 0,
-      articles: [],
-      message: 'No valid article_ids provided'
-    });
+    return res.status(400).json({ error: 'No valid article IDs provided' });
   }
 
   try {
     const db = getTursoClient();
-    const placeholders = cleanIds.map(() => '?').join(',');
+    const placeholders = cleanIds.map(() => '?').join(', ');
     const query = `SELECT * FROM articles WHERE id IN (${placeholders})`;
 
     const articlesRes = await db.execute({
@@ -52,7 +45,7 @@ export default async function handler(req, res) {
     });
 
     const now = Date.now();
-    const enriched = articlesRes.rows.map(a => {
+    const articles = articlesRes.rows.map(a => {
       const mins = Math.floor((now - new Date(a.date).getTime()) / 60000);
       let timeAgo = 'recently';
       if (!isNaN(mins) && mins >= 0) {
@@ -82,10 +75,14 @@ export default async function handler(req, res) {
       };
     });
 
+    const foundIdSet = new Set(articles.map(a => a.id));
+    const missing_ids = cleanIds.filter(id => !foundIdSet.has(id));
+
     return res.status(200).json({
       ok: true,
-      count: enriched.length,
-      articles: enriched
+      count: articles.length,
+      articles,
+      missing_ids
     });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });

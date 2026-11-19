@@ -14,18 +14,19 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const requestedIds = body.article_ids || body.ids || [];
-      const cleanIds = (Array.isArray(requestedIds) ? requestedIds : [requestedIds])
-        .filter(id => id && typeof id === 'string' && id.trim().length > 0)
-        .map(id => id.trim())
-        .slice(0, 100);
+      const article_ids = body.article_ids || body.ids;
 
+      if (!Array.isArray(article_ids) || article_ids.length === 0) {
+        return res.status(400).json({ error: 'article_ids must be a non-empty array of strings' });
+      }
+
+      const cleanIds = [...new Set(article_ids.filter(id => typeof id === 'string' && id.trim()))].slice(0, 100);
       if (cleanIds.length === 0) {
-        return res.status(200).json({ ok: true, count: 0, articles: [], message: 'No valid article_ids provided' });
+        return res.status(400).json({ error: 'No valid article IDs provided' });
       }
 
       const db = getTursoClient();
-      const placeholders = cleanIds.map(() => '?').join(',');
+      const placeholders = cleanIds.map(() => '?').join(', ');
       const articlesRes = await db.execute({
         sql: `SELECT * FROM articles WHERE id IN (${placeholders})`,
         args: cleanIds
@@ -62,10 +63,14 @@ export default async function handler(req, res) {
         };
       });
 
+      const foundIdSet = new Set(enriched.map(a => a.id));
+      const missing_ids = cleanIds.filter(id => !foundIdSet.has(id));
+
       return res.status(200).json({
         ok: true,
         count: enriched.length,
-        articles: enriched
+        articles: enriched,
+        missing_ids
       });
     } catch (err) {
       return res.status(500).json({ ok: false, error: err.message });

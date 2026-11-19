@@ -102,9 +102,17 @@ app.get('/api/articles', async (req, res) => {
 // POST /api/articles/lookup — batch lookup articles by exact IDs
 app.post(['/api/articles/lookup', '/api/articles'], async (req, res) => {
   try {
-    const rawIds = req.body?.article_ids || req.body?.ids || [];
-    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
-    const articles = await lookupArticlesByIds(ids);
+    const article_ids = req.body?.article_ids || req.body?.ids;
+    if (!Array.isArray(article_ids) || article_ids.length === 0) {
+      return res.status(400).json({ error: 'article_ids must be a non-empty array of strings' });
+    }
+
+    const cleanIds = [...new Set(article_ids.filter(id => typeof id === 'string' && id.trim()))].slice(0, 100);
+    if (cleanIds.length === 0) {
+      return res.status(400).json({ error: 'No valid article IDs provided' });
+    }
+
+    const articles = await lookupArticlesByIds(cleanIds);
 
     const now = Date.now();
     const enriched = articles.map(a => {
@@ -137,10 +145,14 @@ app.post(['/api/articles/lookup', '/api/articles'], async (req, res) => {
       };
     });
 
+    const foundIdSet = new Set(enriched.map(a => a.id));
+    const missing_ids = cleanIds.filter(id => !foundIdSet.has(id));
+
     res.json({
       ok: true,
       count: enriched.length,
       articles: enriched,
+      missing_ids
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
