@@ -1,0 +1,8 @@
+{
+  "framework": "vite",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/rss", "destination": "/api/rss" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

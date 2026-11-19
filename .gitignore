@@ -22,3 +22,7 @@ Thumbs.db
 data/
 cache/
 backend/data/
+.vercel
+.vercel/
+
+.vercel
