@@ -47,17 +47,48 @@ export default async function handler(req, res) {
         else if (mins < 1440) timeAgo = `${Math.floor(mins / 60)}h ago`;
         else timeAgo = `${Math.floor(mins / 1440)}d ago`;
       }
+
+      let cleanDesc = (a.description || '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+      if (!cleanDesc || cleanDesc === a.source || cleanDesc.includes('news.google.com') || cleanDesc.length < 15) {
+        cleanDesc = `${(a.title || '').split(' - ')[0].trim()} — Read full coverage on ${a.source || 'News'}.`;
+      }
+
       return {
         ...a,
+        description: cleanDesc,
         timeAgo,
         imageUrl: a.og_image || a.image_url || null,
         hasRealImage: !!(a.og_image || a.image_url),
       };
     });
 
+    const statusMap = {};
+    if (Array.isArray(statusRes.rows)) {
+      statusRes.rows.forEach(r => {
+        const key = r.feed_id || r.id;
+        if (key) {
+          statusMap[key] = {
+            ok: r.status === 'ok' || r.ok === 1 || r.ok === true || (r.article_count || 0) > 0,
+            count: r.article_count || 0,
+            name: r.feed_name || r.name,
+            type: r.feed_type || r.type
+          };
+        }
+      });
+    }
+
     return res.status(200).json({
       articles: enriched,
-      feedStatus: statusRes.rows,
+      feedStatus: statusMap,
+      total: enriched.length,
+      timestamp: new Date().toISOString()
+    });
       total: enriched.length,
       timestamp: new Date().toISOString()
     });
